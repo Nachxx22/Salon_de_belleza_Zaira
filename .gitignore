@@ -1,0 +1,24 @@
+# Dependencias y compilados
+node_modules/
+frontend/dist/
+coverage/
+
+# Variables de entorno y credenciales (NUNCA subir)
+.env
+.env.*
+!.env.example
+
+# Archivos de SQL Server y respaldos (NUNCA subir)
+*.bak
+*.mdf
+*.ldf
+*.ndf
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vs/
+.vscode/*
+!.vscode/extensions.json
+*.log
+npm-debug.log*

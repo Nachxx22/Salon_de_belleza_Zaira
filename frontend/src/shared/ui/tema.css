@@ -1,0 +1,47 @@
+/* =============================================================================
+   TEMA VISUAL — el único archivo que hay que cambiar para la identidad visual
+   -----------------------------------------------------------------------------
+   Colores, tipografía, bordes y espaciado de toda la aplicación salen de estas
+   variables. Cuando tengan logo, colores o tipografía definitivos, cámbienlos
+   aquí y el resto de la interfaz se actualiza solo.
+   Dueña de shared/ui: Persona A (diseño compartido).
+
+   Accesibilidad (AC-07, WCAG 2.2): el texto sobre --color-fondo y sobre
+   --color-primario debe mantener un contraste de al menos 4.5:1.
+============================================================================= */
+
+:root {
+  /* Marca */
+  --color-primario: #8c3b6e;          /* botones principales, enlaces activos */
+  --color-primario-hover: #702d58;
+  --color-primario-suave: #f6e8f1;    /* fondos de elementos destacados */
+  --color-sobre-primario: #ffffff;    /* texto encima del color primario */
+  --color-acento: #c9a227;            /* detalles decorativos; no usar para texto */
+
+  /* Superficies y texto */
+  --color-fondo: #faf8f9;
+  --color-superficie: #ffffff;
+  --color-texto: #2b2129;
+  --color-texto-suave: #5e5360;
+  --color-borde: #ddd3da;
+
+  /* Estados (mensajes y etiquetas) */
+  --color-exito: #1f7a4d;
+  --color-exito-fondo: #e6f4ec;
+  --color-error: #b3261e;
+  --color-error-fondo: #fbe9e7;
+  --color-aviso: #8a5a00;
+  --color-aviso-fondo: #fff4d6;
+
+  /* Tipografía */
+  --fuente-texto: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fuente-titulos: Georgia, "Times New Roman", serif;
+  --tamano-base: 16px;
+
+  /* Formas y espaciado */
+  --radio: 10px;
+  --radio-pequeno: 6px;
+  --sombra: 0 1px 3px rgb(43 33 41 / 0.08), 0 4px 12px rgb(43 33 41 / 0.06);
+  --espacio: 1rem;
+  --ancho-contenido: 1100px;
+}

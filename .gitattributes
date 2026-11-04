@@ -1,0 +1,5 @@
+# Saltos de línea uniformes entre las dos computadoras (evita diferencias falsas)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.svg text

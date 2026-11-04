@@ -1,0 +1,26 @@
+{
+  "name": "salon-de-belleza-zaira",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototipo del sistema web del Salón de Belleza Zaira (React + Node.js/Express + SQL Server)",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "engines": {
+    "node": ">=26.13.0"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c magenta,cyan \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w frontend",
+    "start": "npm start -w backend",
+    "test": "npm test -w backend",
+    "db:migrar": "npm run db:migrar -w backend",
+    "db:semillas": "npm run db:semillas -w backend",
+    "db:admin": "npm run db:admin -w backend",
+    "db:preparar": "npm run db:migrar && npm run db:semillas"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}

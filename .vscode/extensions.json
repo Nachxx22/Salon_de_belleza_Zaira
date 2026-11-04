@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "ms-mssql.mssql",
+    "atlassian.atlascode",
+    "editorconfig.editorconfig"
+  ]
+}

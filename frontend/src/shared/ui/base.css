@@ -1,0 +1,290 @@
+/* Estilos generales. Usan solo las variables de tema.css. Dueña: Persona A. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: var(--tamano-base);
+}
+
+body {
+  margin: 0;
+  font-family: var(--fuente-texto);
+  color: var(--color-texto);
+  background: var(--color-fondo);
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--fuente-titulos);
+  line-height: 1.2;
+  margin: 0 0 0.75rem;
+}
+
+a {
+  color: var(--color-primario);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-acento);
+  outline-offset: 2px;
+}
+
+.saltar-contenido {
+  position: absolute;
+  left: -9999px;
+}
+
+.saltar-contenido:focus {
+  left: var(--espacio);
+  top: var(--espacio);
+  z-index: 10;
+  background: var(--color-superficie);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radio-pequeno);
+}
+
+/* ---- Estructura ---------------------------------------------------------- */
+.contenedor {
+  width: min(100% - 2rem, var(--ancho-contenido));
+  margin-inline: auto;
+}
+
+.encabezado {
+  background: var(--color-superficie);
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.encabezado__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block: 0.9rem;
+}
+
+.marca {
+  font-family: var(--fuente-titulos);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-primario);
+  text-decoration: none;
+}
+
+.navegacion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.navegacion a {
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radio-pequeno);
+  color: var(--color-texto);
+  text-decoration: none;
+}
+
+.navegacion a:hover,
+.navegacion a.active {
+  background: var(--color-primario-suave);
+  color: var(--color-primario);
+}
+
+.principal {
+  padding-block: 2rem 3rem;
+}
+
+.pie {
+  border-top: 1px solid var(--color-borde);
+  padding-block: 1.25rem;
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+/* Panel administrativo: menú lateral en pantallas grandes, arriba en móviles. */
+.panel {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  min-height: 100vh;
+}
+
+.panel__menu {
+  background: var(--color-superficie);
+  border-right: 1px solid var(--color-borde);
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.panel__menu .navegacion {
+  flex-direction: column;
+}
+
+.panel__contenido {
+  padding: 2rem clamp(1rem, 3vw, 2.5rem);
+}
+
+@media (max-width: 760px) {
+  .panel {
+    grid-template-columns: 1fr;
+  }
+  .panel__menu {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-borde);
+  }
+  .panel__menu .navegacion {
+    flex-direction: row;
+  }
+}
+
+/* ---- Componentes --------------------------------------------------------- */
+.tarjeta {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 1.5rem;
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radio-pequeno);
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.boton--primario {
+  background: var(--color-primario);
+  color: var(--color-sobre-primario);
+}
+
+.boton--primario:hover {
+  background: var(--color-primario-hover);
+}
+
+.boton--secundario {
+  background: var(--color-superficie);
+  color: var(--color-primario);
+  border-color: var(--color-primario);
+}
+
+.boton--peligro {
+  background: var(--color-error);
+  color: var(--color-sobre-primario);
+}
+
+.boton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.campo {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.campo label {
+  font-weight: 600;
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+  font: inherit;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-pequeno);
+  background: var(--color-superficie);
+  color: var(--color-texto);
+}
+
+.campo input[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+.campo__error {
+  color: var(--color-error);
+  font-size: 0.9rem;
+}
+
+.campo__ayuda {
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+.obligatorio {
+  color: var(--color-error);
+}
+
+.mensaje {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radio-pequeno);
+  margin-bottom: 1rem;
+  border: 1px solid transparent;
+}
+
+.mensaje--exito {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+  border-color: var(--color-exito);
+}
+
+.mensaje--error {
+  background: var(--color-error-fondo);
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.mensaje--aviso {
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso);
+  border-color: var(--color-aviso);
+}
+
+.etiqueta {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: var(--color-primario-suave);
+  color: var(--color-primario);
+}
+
+.texto-suave {
+  color: var(--color-texto-suave);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-superficie);
+}
+
+.tabla th,
+.tabla td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--color-borde);
+}

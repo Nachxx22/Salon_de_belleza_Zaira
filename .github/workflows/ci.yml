@@ -1,0 +1,21 @@
+# Verificación automática en cada push a main: pruebas del backend y compilación del frontend.
+# El resultado aparece en GitHub y, por la conexión con Jira, en el panel Desarrollo.
+name: Verificación
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
