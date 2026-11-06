@@ -118,3 +118,13 @@ Solo los archivos `<modulo>.datos.js` escriben SQL y usan `consulta` o `enTransa
 **Extensiones acordadas, no son parte del ERS.** Como en D-018 (servicios), el ERS solo define desactivar un proveedor (MPV-04) o un producto (MPD-02). Se agregan `PATCH /api/admin/proveedores/:id/reactivar` y `PATCH /api/admin/productos/:id/reactivar`, con confirmación en pantalla. No se cambian ventas, productos asociados ni stock. **Las ventas no tienen esta extensión:** una venta anulada (MV-03) queda anulada para siempre.
 
 Otras decisiones del paso 7: el catálogo público de productos no muestra stock, proveedor ni estado (MPD-03, restricción 1); al actualizar un producto que conserva su mismo proveedor, se acepta aunque ese proveedor esté desactivado, porque los productos conservan la asociación (MPV-04, restricción 3); el stock solo cambia con MPD-06 o con una venta.
+
+## D-021 — Reglas de ventas (6 nov 2026)
+
+- **Solo se vende lo activo:** un producto o servicio desactivado no se puede incluir en una venta nueva (`PRODUCTO_NO_DISPONIBLE`, `SERVICIO_NO_DISPONIBLE`). Desactivar significa que deja de ofrecerse (MPD-02, MS-04); las ventas anteriores no cambian.
+- **Stock sin carreras:** el descuento es `UPDATE ... SET Stock = Stock - @cantidad WHERE Stock >= @cantidad` dentro de la transacción de la venta (D-016). Si una línea no alcanza, se revierte toda la venta y se responde «Cantidad insuficiente» (mensaje exacto del ERS) con el producto, lo disponible y lo pedido.
+- **Precio y total los pone el servidor:** el precio de cada producto se toma del catálogo en el momento de la venta y queda fijo en `VentaProducto.PrecioAplicado`; el total lo calcula `ventas.logica.js`. React solo muestra una vista previa.
+- **Líneas repetidas:** un producto repetido suma sus cantidades; un servicio solo puede ir una vez por venta (llave de `VentaServicio`).
+- **Pago:** el campo `pagoConfirmado: true` es obligatorio (MV-01, restricción 8). No se guarda: sin él la venta no existe.
+- **Anular:** solo cambia `Estado` y `MotivoAnulacion` y suma de vuelta las cantidades al stock, todo en una transacción (MV-03). Una venta anulada no se reactiva (D-020).
+- `validarFecha` pasó a `shared/validacion.js` (`fecha`) para que Ventas no dependa del módulo de Citas.

@@ -6,7 +6,7 @@
 import { randomInt } from 'node:crypto';
 import { errores, ErrorApp } from '../../shared/errores.js';
 import { hoyCostaRica, ahoraCostaRica } from '../../shared/fechas.js';
-import { correo, telefono, textoOpcional, textoRequerido } from '../../shared/validacion.js';
+import { correo, fecha, telefono, textoOpcional, textoRequerido } from '../../shared/validacion.js';
 import * as datos from './citas.datos.js';
 import * as clientesDatos from '../clientes/clientes.datos.js';
 import * as serviciosDatos from '../servicios/servicios.datos.js';
@@ -28,17 +28,8 @@ export function aHora(minutos) {
   return `${dos(Math.floor(minutos / 60))}:${dos(minutos % 60)}`;
 }
 
-// 'YYYY-MM-DD' de una fecha real (rechaza 2026-02-30).
-export function validarFecha(valor, campo = 'fecha') {
-  if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
-    throw errores.datosInvalidos(`La ${campo} debe tener el formato AAAA-MM-DD.`, { campo });
-  }
-  const fecha = new Date(`${valor}T00:00:00Z`);
-  if (Number.isNaN(fecha.getTime()) || fecha.toISOString().slice(0, 10) !== valor) {
-    throw errores.datosInvalidos(`La ${campo} no es una fecha válida.`, { campo });
-  }
-  return valor;
-}
+// 'YYYY-MM-DD' de una fecha real (rechaza 2026-02-30); la regla está en shared/validacion.js.
+export const validarFecha = fecha;
 
 // 1 = lunes … 7 = domingo, como dbo.Horario.DiaSemana.
 export function diaSemana(fecha) {

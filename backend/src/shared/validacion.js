@@ -62,6 +62,18 @@ export function correo(valor, campo = 'correo electrónico') {
   return texto;
 }
 
+// Fecha 'YYYY-MM-DD' que exista en el calendario (rechaza 2026-02-30).
+export function fecha(valor, campo = 'fecha') {
+  if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    throw errores.datosInvalidos(`La ${campo} debe tener el formato AAAA-MM-DD.`, { campo });
+  }
+  const dia = new Date(`${valor}T00:00:00Z`);
+  if (Number.isNaN(dia.getTime()) || dia.toISOString().slice(0, 10) !== valor) {
+    throw errores.datosInvalidos(`La ${campo} no es una fecha válida.`, { campo });
+  }
+  return valor;
+}
+
 export function idDeRuta(valor, campo = 'id') {
   return enteroPositivo(valor, campo);
 }

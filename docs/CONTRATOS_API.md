@@ -168,9 +168,35 @@ Cuerpo de `POST /api/admin/citas`:
 - `409 PROVEEDOR_NO_DISPONIBLE`: el proveedor elegido no existe o está desactivado. Al actualizar, si el producto conserva su mismo proveedor, se acepta aunque ese proveedor esté desactivado (MPV-04, restricción 3).
 - El descuento y la reposición automática de stock (MPD-06 desde MV-01 y MV-03) se hacen en la transacción de la venta.
 
+## Ventas — Persona B
+
+| Método | Ruta | Requerimiento | Entrada | Respuesta |
+|---|---|---|---|---|
+| GET | `/api/admin/ventas` | MV-02 | `?codigo=&desde=YYYY-MM-DD&hasta=YYYY-MM-DD&cliente=&metodoPago=&estado=` (todos opcionales) | `200 [{ id, codigo, fechaHora, referenciaCliente, metodoPago, total, estado }]`, más recientes primero |
+| GET | `/api/admin/ventas/:id` | MV-02 | — | `200 venta` |
+| POST | `/api/admin/ventas` | MV-01 | ver abajo | `201 venta`, estado `Registrada` |
+| PATCH | `/api/admin/ventas/:id/anular` | MV-03 | `{ motivo }` (obligatorio, hasta 500) | `200 venta`, estado `Anulada`; repone el stock |
+
+Cuerpo de `POST /api/admin/ventas`:
+
+```json
+{
+  "referenciaCliente": "Ana Mora",
+  "productos": [{ "id": 1, "cantidad": 2 }],
+  "servicios": [{ "id": 3, "precioFinal": 8000 }],
+  "metodoPago": "SINPE",
+  "pagoConfirmado": true
+}
+```
+
+- Venta: `{ id, codigo, fechaHora: "2026-11-06 10:30", referenciaCliente, metodoPago, total, estado, motivoAnulacion, productos: [{ id, nombre, marca, cantidad, precioAplicado }], servicios: [{ id, nombre, precioFinal }] }`.
+- El precio de cada producto lo toma el servidor del catálogo al registrar (no se envía); el total lo calcula el servidor. Un producto repetido suma sus cantidades; un servicio va una sola vez.
+- Códigos de negocio: `409 CANTIDAD_INSUFICIENTE` con el mensaje exacto «Cantidad insuficiente» y `detalles: { producto, disponible, solicitado }`; `400 PAGO_NO_CONFIRMADO`; `409 PRODUCTO_NO_DISPONIBLE` y `409 SERVICIO_NO_DISPONIBLE` (desactivado o inexistente); `409 VENTA_YA_ANULADA`.
+- Registrar descuenta el stock y anular lo repone en la misma transacción que la venta (D-016, D-017); nunca quedan cambios parciales.
+
 ## Pendientes de definir
 
 Cada responsable completa la tabla de rutas de su módulo antes de programarlo. Las rutas propuestas están en el comentario inicial de cada archivo `backend/src/modules/<modulo>/<modulo>.rutas.js`.
 
-- **Ventas** (Persona B).
+- **EXT-MV-U01 Actualizar venta** (Persona B, paso 9).
 - **Citas, Agenda, Solicitudes** (Persona A). La disponibilidad se calcula con un solo algoritmo en el servidor; React no decide si un horario es válido.

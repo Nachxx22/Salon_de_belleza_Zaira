@@ -1,5 +1,5 @@
 // Pruebas de punta a punta contra SQL Server real: Integración 1 (acceso +
-// servicios + citas) y paso 7 (proveedores y productos).
+// servicios + citas), paso 7 (proveedores y productos) y paso 8 (ventas).
 // Uso: npm run api:integracion  (lee backend/.env; necesita db:migrar, db:semillas y db:admin)
 //
 // OJO: deja datos de prueba (un servicio, un cliente y citas). Úsenlo en una
@@ -244,6 +244,101 @@ try {
   r = await llamar('PATCH', `/admin/productos/${producto.id}/reactivar`);
   r = await llamar('GET', '/publico/productos');
   revisar('al reactivarlo vuelve al catálogo (EXT-MPD-R01)', () => assert.ok(r.cuerpo.data.some((p) => p.id === producto.id)));
+
+  // 12. Ventas (MV-01 a MV-03, MPD-06 automático). El producto tiene stock 5 y precio 5200.
+  console.log('Ventas');
+  const stockDe = async () => (await llamar('GET', `/admin/productos/${producto.id}`)).cuerpo.data.stock;
+  const referencia = `Cliente venta ${sufijo}`;
+  const venta = (extra = {}) => ({
+    referenciaCliente: referencia,
+    productos: [{ id: producto.id, cantidad: 3 }],
+    servicios: [{ id: servicio.id, precioFinal: 7000 }],
+    metodoPago: 'SINPE',
+    pagoConfirmado: true,
+    ...extra,
+  });
+
+  r = await llamar('POST', '/admin/ventas', venta({ pagoConfirmado: false }));
+  revisar('sin confirmar el pago no se registra (MV-01, criterio 7)', () => assert.equal(r.cuerpo.codigo, 'PAGO_NO_CONFIRMADO'));
+  r = await llamar('POST', '/admin/ventas', venta({ productos: [], servicios: [] }));
+  revisar('sin productos ni servicios no se registra (MV-01, flujo alterno)', () => assert.equal(r.cuerpo.codigo, 'DATOS_INVALIDOS'));
+
+  r = await llamar('POST', '/admin/ventas', venta());
+  revisar('se registra la venta con código, estado Registrada y total calculado (MV-01, criterios 1, 3 y 10)', () => {
+    assert.equal(r.estado, 201, JSON.stringify(r.cuerpo));
+    assert.match(r.cuerpo.data.codigo, /^V-\d{6}$/);
+    assert.equal(r.cuerpo.data.estado, 'Registrada');
+    assert.equal(r.cuerpo.data.total, 3 * 5200 + 7000);
+    assert.equal(r.cuerpo.data.productos[0].precioAplicado, 5200);
+    assert.match(r.cuerpo.data.fechaHora, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+  });
+  const ventaUno = r.cuerpo.data;
+  let stock = await stockDe();
+  revisar('el stock bajó de 5 a 2 (MV-01 criterio 8, MPD-06 criterio 3)', () => assert.equal(stock, 2));
+
+  r = await llamar('POST', '/admin/ventas', venta());
+  revisar('si no alcanza el stock responde «Cantidad insuficiente» (MV-01, flujo alterno)', () => {
+    assert.equal(r.estado, 409);
+    assert.equal(r.cuerpo.codigo, 'CANTIDAD_INSUFICIENTE');
+    assert.equal(r.cuerpo.mensaje, 'Cantidad insuficiente');
+    assert.equal(r.cuerpo.detalles.disponible, 2);
+  });
+  assert.equal(await stockDe(), 2);
+  r = await llamar('GET', `/admin/ventas?cliente=${encodeURIComponent(referencia)}`);
+  revisar('y no quedó ni venta parcial ni stock descontado (MV-01, excepciones)', () => assert.equal(r.cuerpo.data.length, 1));
+
+  r = await llamar('POST', '/admin/ventas', { servicios: [{ id: servicio.id, precioFinal: 6000 }], metodoPago: 'Efectivo', pagoConfirmado: true });
+  revisar('una venta solo de servicios y sin cliente se registra (MV-01, criterio 2)', () => {
+    assert.equal(r.estado, 201, JSON.stringify(r.cuerpo));
+    assert.equal(r.cuerpo.data.referenciaCliente, null);
+    assert.deepEqual(r.cuerpo.data.productos, []);
+  });
+  const ventaServicios = r.cuerpo.data;
+
+  // El precio registrado no cambia si después cambia el catálogo (MV-02, restricción 6).
+  r = await llamar('PUT', `/admin/productos/${producto.id}`, { ...datosProducto, precio: 9999 });
+  r = await llamar('GET', `/admin/ventas/${ventaUno.id}`);
+  revisar('el detalle conserva cantidades y el precio del momento de la venta (MV-02, criterios 5 y 6)', () => {
+    assert.equal(r.cuerpo.data.productos[0].cantidad, 3);
+    assert.equal(r.cuerpo.data.productos[0].precioAplicado, 5200);
+    assert.equal(r.cuerpo.data.servicios[0].precioFinal, 7000);
+  });
+  r = await llamar('GET', `/admin/ventas?codigo=${ventaUno.codigo.toLowerCase()}`);
+  revisar('se busca por código (MV-02, criterio 3)', () => assert.deepEqual(r.cuerpo.data.map((v) => v.id), [ventaUno.id]));
+  r = await llamar('GET', `/admin/ventas?desde=${hoyCostaRica()}&hasta=${hoyCostaRica()}&metodoPago=Efectivo`);
+  revisar('se filtra por rango de fechas y método de pago (MV-02, criterio 3)', () => {
+    assert.ok(r.cuerpo.data.some((v) => v.id === ventaServicios.id));
+    assert.ok(r.cuerpo.data.every((v) => v.metodoPago === 'Efectivo'));
+  });
+
+  r = await llamar('PATCH', `/admin/ventas/${ventaUno.id}/anular`, { motivo: '  ' });
+  revisar('el motivo de anulación es obligatorio (MV-03, criterio 2)', () => assert.equal(r.cuerpo.codigo, 'DATOS_INVALIDOS'));
+  r = await llamar('PATCH', `/admin/ventas/${ventaUno.id}/anular`, { motivo: 'Error en la cantidad.' });
+  revisar('se anula con su motivo y conserva sus datos (MV-03, criterios 3, 4 y 5)', () => {
+    assert.equal(r.cuerpo.data.estado, 'Anulada');
+    assert.equal(r.cuerpo.data.motivoAnulacion, 'Error en la cantidad.');
+    assert.equal(r.cuerpo.data.total, ventaUno.total);
+    assert.equal(r.cuerpo.data.productos[0].cantidad, 3);
+  });
+  stock = await stockDe();
+  revisar('el stock volvió de 2 a 5 (MV-03 criterio 6, MPD-06 criterio 6)', () => assert.equal(stock, 5));
+  r = await llamar('PATCH', `/admin/ventas/${ventaUno.id}/anular`, { motivo: 'Otra vez.' });
+  revisar('no se puede anular dos veces (MV-03, criterio 7)', () => {
+    assert.equal(r.estado, 409);
+    assert.equal(r.cuerpo.codigo, 'VENTA_YA_ANULADA');
+  });
+  assert.equal(await stockDe(), 5);
+  r = await llamar('PATCH', `/admin/ventas/${ventaServicios.id}/anular`, { motivo: 'Prueba solo servicios.' });
+  revisar('una venta solo de servicios se anula sin tocar el inventario (MV-03, criterio 6)', () => assert.equal(r.cuerpo.data.estado, 'Anulada'));
+  assert.equal(await stockDe(), 5);
+  r = await llamar('GET', `/admin/ventas?estado=Anulada&cliente=${encodeURIComponent(referencia)}`);
+  revisar('la venta anulada sigue disponible en la consulta (MV-03 criterio 8, MV-02 criterio 1)', () => assert.equal(r.cuerpo.data.length, 1));
+
+  r = await llamar('PATCH', `/admin/productos/${producto.id}/desactivar`);
+  r = await llamar('POST', '/admin/ventas', venta({ productos: [{ id: producto.id, cantidad: 1 }] }));
+  revisar('un producto desactivado no se puede vender (D-021)', () => assert.equal(r.cuerpo.codigo, 'PRODUCTO_NO_DISPONIBLE'));
+  assert.equal(await stockDe(), 5);
+  await llamar('PATCH', `/admin/productos/${producto.id}/reactivar`);
 
   r = await llamar('POST', '/auth/logout');
   revisar('la administradora cierra sesión (MA-02)', () => assert.equal(r.estado, 200));

@@ -29,31 +29,31 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 
 | Código | Requerimiento | Prioridad ERS | Jira RF | Jira CU | Fase | Estado | Prueba |
 |---|---|---|---|---|---|---|---|
-| MPV-01 | Registrar proveedor | Media | SCRUM-31 | SCRUM-85 | P0 | integrado | Validación, duplicados de teléfono y correo, estado Activo. Pruebas automáticas y de punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MPV-02 | Consultar proveedor | Media | SCRUM-32 | SCRUM-86 | P0 | integrado | Listado con búsqueda por nombre, teléfono o correo y detalle con productos asociados. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MPV-03 | Actualizar proveedor | Media | SCRUM-33 | SCRUM-87 | P0 | integrado | Mismas reglas que el registro; no cambia estado ni productos. Falta probar en pantalla. |
-| MPV-04 | Desactivar proveedor | Media | SCRUM-34 | SCRUM-88 | P0 | integrado | Baja lógica con confirmación; conserva productos; impide asociaciones nuevas. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MPV-01 | Registrar proveedor | Media | SCRUM-31 | SCRUM-85 | P0 | probado | Validación, duplicados de teléfono y correo, estado Activo. Pruebas automáticas y de punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MPV-02 | Consultar proveedor | Media | SCRUM-32 | SCRUM-86 | P0 | probado | Listado con búsqueda por nombre, teléfono o correo y detalle con productos asociados. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MPV-03 | Actualizar proveedor | Media | SCRUM-33 | SCRUM-87 | P0 | probado | Mismas reglas que el registro; no cambia estado ni productos. Probado en pantalla con SQL Server (6 nov). |
+| MPV-04 | Desactivar proveedor | Media | SCRUM-34 | SCRUM-88 | P0 | probado | Baja lógica con confirmación; conserva productos; impide asociaciones nuevas. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
 
 ## Productos — Persona B (Ignacio)
 
 | Código | Requerimiento | Prioridad ERS | Jira RF | Jira CU | Fase | Estado | Prueba |
 |---|---|---|---|---|---|---|---|
-| MPD-01 | Registrar producto | Alta | SCRUM-25 | SCRUM-79 | P0 | integrado | Proveedor activo obligatorio, precio ≥ 0, stock entero ≥ 0, Disponible/Agotado. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MPD-02 | Desactivar producto | Media | SCRUM-26 | SCRUM-80 | P0 | integrado | Baja lógica con confirmación; sale del catálogo público. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MPD-03 | Consultar producto | Alta | SCRUM-27 | SCRUM-81 | P0 | integrado | Catálogo público sin stock ni proveedor; consulta administrativa completa. Falta probar en pantalla. |
-| MPD-04 | Consultar stock | Alta | SCRUM-28 | SCRUM-82 | P0 | integrado | Vista «Consultar stock». Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MPD-05 | Actualizar producto | Alta | SCRUM-29 | SCRUM-83 | P0 | integrado | No cambia el stock; proveedor nuevo debe estar activo. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MPD-06 | Actualizar stock | Alta | SCRUM-30 | SCRUM-84 | P0 | integrado | Ajuste manual probado de punta a punta. El descuento y la reposición automática (criterios 3, 5 y 6) se programan con Ventas (paso 8). |
-| EXT-MPV-R01 | Reactivar proveedor (**extensión acordada, no está en el ERS**; D-020) | — | — | — | P0 | integrado | Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| EXT-MPD-R01 | Reactivar producto (**extensión acordada, no está en el ERS**; D-020) | — | — | — | P0 | integrado | Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MPD-01 | Registrar producto | Alta | SCRUM-25 | SCRUM-79 | P0 | probado | Proveedor activo obligatorio, precio ≥ 0, stock entero ≥ 0, Disponible/Agotado. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MPD-02 | Desactivar producto | Media | SCRUM-26 | SCRUM-80 | P0 | probado | Baja lógica con confirmación; sale del catálogo público. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MPD-03 | Consultar producto | Alta | SCRUM-27 | SCRUM-81 | P0 | probado | Catálogo público sin stock ni proveedor; consulta administrativa completa. Probado en pantalla con SQL Server (6 nov). |
+| MPD-04 | Consultar stock | Alta | SCRUM-28 | SCRUM-82 | P0 | probado | Vista «Consultar stock». Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MPD-05 | Actualizar producto | Alta | SCRUM-29 | SCRUM-83 | P0 | probado | No cambia el stock; proveedor nuevo debe estar activo. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MPD-06 | Actualizar stock | Alta | SCRUM-30 | SCRUM-84 | P0 | probado | Ajuste manual probado en pantalla (6 nov). Descuento al vender (MV-01) y reposición al anular (MV-03) de punta a punta con SQL Server (CI). |
+| EXT-MPV-R01 | Reactivar proveedor (**extensión acordada, no está en el ERS**; D-020) | — | — | — | P0 | probado | Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| EXT-MPD-R01 | Reactivar producto (**extensión acordada, no está en el ERS**; D-020) | — | — | — | P0 | probado | Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
 
 ## Ventas — Persona B (Ignacio)
 
 | Código | Requerimiento | Prioridad ERS | Jira RF | Jira CU | Fase | Estado | Prueba |
 |---|---|---|---|---|---|---|---|
-| MV-01 | Registrar venta | Alta | SCRUM-35 | SCRUM-89 | P0 | pendiente | |
-| MV-02 | Consultar venta | Alta | SCRUM-36 | SCRUM-90 | P0 | pendiente | |
-| MV-03 | Anular venta | Media | SCRUM-38 | SCRUM-92 | P0 | pendiente | |
+| MV-01 | Registrar venta | Alta | SCRUM-35 | SCRUM-89 | P0 | integrado | Venta de productos y/o servicios en una transacción con el stock (Stock >= cantidad), «Cantidad insuficiente», pago confirmado, total del servidor. Pruebas de reglas y de punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MV-02 | Consultar venta | Alta | SCRUM-36 | SCRUM-90 | P0 | integrado | Listado con filtros por código, fechas, cliente, método y estado; detalle con precios registrados. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MV-03 | Anular venta | Media | SCRUM-38 | SCRUM-92 | P0 | integrado | Motivo obligatorio, confirmación, repone el stock en la misma transacción, no se anula dos veces. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
 | EXT-MV-U01 | Actualizar venta (**extensión acordada, no está en el ERS**) | — | — | — | P0 | pendiente | |
 
 ## Citas y Agenda — Persona A
