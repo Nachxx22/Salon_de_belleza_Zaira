@@ -15,7 +15,11 @@ Contexto para cualquier agente (Claude u otro) que trabaje en este repositorio, 
 2. **Base de datos:** nunca editen migraciones existentes; agreguen una nueva en `database/migrations` con nombre `AAAAMMDD_HHMM_<inicial>_<descripcion>.sql`. Nada de borrados físicos de historial (desactivar, cancelar o anular).
 3. **API:** sigan `docs/CONTRATOS_API.md` (respuesta `{ ok, data }`, errores `{ ok: false, codigo, mensaje }`). Rutas públicas en `rutasPublicas` y administrativas en `rutasAdmin` del archivo `.rutas.js` del módulo; las administrativas ya exigen sesión.
 4. **Capas del módulo:** `<modulo>.rutas.js` (HTTP), `<modulo>.logica.js` (reglas del caso de uso), `<modulo>.datos.js` (SQL parametrizado con `consulta` o `enTransaccion` de `backend/src/shared/db.js`). Nunca concatenen datos del usuario en el SQL.
-5. **Operaciones de varias tablas** (venta + stock, cita + solicitud) van en una sola transacción con `enTransaccion`.
+   - **Nada de SQL fuera de `.datos.js`** (D-017). Los archivos `.logica.js` y `.rutas.js` no escriben SQL, no importan `shared/db.js` ni `mssql` y no usan nombres de tablas ni de columnas.
+   - `.datos.js` recibe y devuelve objetos en camelCase (la forma del contrato); ahí se convierten las filas (`Id` → `id`).
+   - `.logica.js` valida, decide y lanza los errores del caso de uso usando solo funciones de `.datos.js`. `.rutas.js` solo lee la solicitud, llama a la lógica y responde.
+   - `npm test` revisa esta regla (`backend/test/capas.test.js`).
+5. **Operaciones de varias tablas** (venta + stock, cita + solicitud) van en una sola transacción con `enTransaccion`, dentro de una función de `.datos.js` (por ejemplo `registrarVentaConStock`). Si una condición se comprueba en el SQL (como `Stock >= @cantidad`), la función de datos devuelve el resultado (por ejemplo, qué producto no alcanzó) y la lógica decide el error y el mensaje.
 6. **Interfaz:** usen los componentes de `frontend/src/shared/ui/componentes.jsx` y las variables de `tema.css`; nada de colores fijos. Formularios con etiquetas y mensajes claros (AC-04, AC-05, AC-07).
 7. **Extensiones fuera del ERS** se marcan como `EXT-...` y se registran en `docs/DECISIONES.md` (por ejemplo, EXT-MV-U01 Actualizar venta). No las presenten como requisitos del ERS.
 8. **Nunca suban** `.env`, contraseñas, respaldos `.bak` ni archivos de SQL Server. El repositorio es público.

@@ -66,7 +66,10 @@ export async function consulta(textoSql, parametros = {}) {
 }
 
 // Ejecuta varias operaciones como una sola unidad: si algo falla, se revierte todo.
-// Uso:
+// `consulta` y `enTransaccion` solo se usan dentro de archivos <modulo>.datos.js
+// (D-017): la transacción completa vive en una función de datos, por ejemplo
+// `registrarVentaConStock(venta)`, que la capa lógica llama ya con datos validados.
+// Uso (dentro de un .datos.js):
 //   await enTransaccion(async (tx) => {
 //     await tx.consulta('UPDATE dbo.Producto SET Stock = Stock - @c WHERE Id = @id AND Stock >= @c', { c, id });
 //     ...

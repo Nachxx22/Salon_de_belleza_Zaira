@@ -1,7 +1,8 @@
 // Reglas de MS-01 y MS-03 que no necesitan SQL Server. Ejecutar con: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { aServicio, validarServicio } from '../src/modules/servicios/servicios.logica.js';
+import { validarServicio } from '../src/modules/servicios/servicios.logica.js';
+import { aServicio } from '../src/modules/servicios/servicios.datos.js';
 
 const valido = {
   nombre: 'Corte de cabello',

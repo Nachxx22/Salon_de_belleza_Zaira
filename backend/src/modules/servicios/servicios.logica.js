@@ -1,5 +1,7 @@
 // Reglas de los casos de uso MS-01 a MS-05 (dueño: Persona B).
 // Fuente: CU-MS-01 a CU-MS-05 en Jira (ERS sección 3.2.2).
+// Sin SQL ni nombres de tablas o columnas: todo acceso a la base pasa por
+// servicios.datos.js, que entrega objetos en camelCase (D-017).
 import { errores } from '../../shared/errores.js';
 import { enteroPositivo, montoNoNegativo, textoRequerido } from '../../shared/validacion.js';
 import * as datos from './servicios.datos.js';
@@ -40,33 +42,20 @@ export function validarServicio(entrada = {}) {
   return { nombre, descripcion, precioAproximado, duracionMinutos, permiteDomicilio };
 }
 
-// Forma que ven React y Citas (docs/CONTRATOS_API.md).
-export function aServicio(fila) {
-  return {
-    id: fila.Id,
-    nombre: fila.Nombre,
-    descripcion: fila.Descripcion,
-    precioAproximado: Number(fila.PrecioAproximado),
-    duracionMinutos: fila.DuracionMinutos,
-    permiteDomicilio: Boolean(fila.PermiteDomicilio),
-    estado: fila.Estado,
-  };
-}
-
 async function obtenerExistente(id) {
-  const fila = await datos.obtenerPorId(id);
-  if (!fila) throw errores.noEncontrado('No existe el servicio solicitado.');
-  return aServicio(fila);
+  const servicio = await datos.obtenerPorId(id);
+  if (!servicio) throw errores.noEncontrado('No existe el servicio solicitado.');
+  return servicio;
 }
 
 // MS-02: catálogo público, solo servicios disponibles.
 export async function listarPublicos() {
-  return (await datos.listarActivos()).map(aServicio);
+  return datos.listarActivos();
 }
 
 // MS-05: todos los servicios, activos e inactivos.
 export async function listarAdmin() {
-  return (await datos.listarTodos()).map(aServicio);
+  return datos.listarTodos();
 }
 
 export async function obtenerAdmin(id) {

@@ -1,15 +1,29 @@
 // Capa de datos del módulo Servicios (dueño: Persona B).
-// Solo SQL parametrizado; las reglas de negocio están en servicios.logica.js.
+// Es la única capa que conoce SQL, tablas y columnas (D-017): recibe y devuelve
+// objetos en camelCase, como los del contrato. Las reglas están en servicios.logica.js.
 import { consulta, sql } from '../../shared/db.js';
 
 const COLUMNAS = 'Id, Nombre, Descripcion, PrecioAproximado, DuracionMinutos, PermiteDomicilio, Estado';
+
+// Convierte una fila de dbo.Servicio en la forma del contrato (docs/CONTRATOS_API.md).
+export function aServicio(fila) {
+  return {
+    id: fila.Id,
+    nombre: fila.Nombre,
+    descripcion: fila.Descripcion,
+    precioAproximado: Number(fila.PrecioAproximado),
+    duracionMinutos: fila.DuracionMinutos,
+    permiteDomicilio: Boolean(fila.PermiteDomicilio),
+    estado: fila.Estado,
+  };
+}
 
 // Catálogo público (MS-02): solo servicios disponibles.
 export async function listarActivos() {
   const { filas } = await consulta(
     `SELECT ${COLUMNAS} FROM dbo.Servicio WHERE Estado = N'Activo' ORDER BY Nombre`,
   );
-  return filas;
+  return filas.map(aServicio);
 }
 
 // Listado administrativo (MS-05): activos primero, luego desactivados.
@@ -18,15 +32,16 @@ export async function listarTodos() {
     `SELECT ${COLUMNAS} FROM dbo.Servicio
      ORDER BY CASE WHEN Estado = N'Activo' THEN 0 ELSE 1 END, Nombre`,
   );
-  return filas;
+  return filas.map(aServicio);
 }
 
+// Devuelve el servicio o null si no existe.
 export async function obtenerPorId(id) {
   const { filas } = await consulta(
     `SELECT ${COLUMNAS} FROM dbo.Servicio WHERE Id = @id`,
     { id },
   );
-  return filas[0] ?? null;
+  return filas[0] ? aServicio(filas[0]) : null;
 }
 
 // MS-01: el servicio nace Activo (lo pone la columna por defecto).
