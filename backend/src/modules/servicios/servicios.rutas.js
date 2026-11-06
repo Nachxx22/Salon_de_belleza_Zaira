@@ -5,6 +5,7 @@
 //   POST   /api/admin/servicios                 MS-01 registrar servicio
 //   PUT    /api/admin/servicios/:id             MS-03 actualizar servicio
 //   PATCH  /api/admin/servicios/:id/desactivar  MS-04 desactivar servicio (baja lógica)
+//   PATCH  /api/admin/servicios/:id/reactivar   EXT-MS-R01 reactivar servicio (extensión, no está en el ERS)
 //   GET    /api/publico/servicios               MS-02 catálogo público de servicios activos
 //
 // Capas: este archivo recibe la solicitud y responde; las reglas están en
@@ -45,5 +46,12 @@ rutasAdmin.put('/:id', async (req, res) => {
 rutasAdmin.patch('/:id/desactivar', async (req, res) => {
   const { servicio, yaEstaba } = await logica.desactivar(idDeRuta(req.params.id));
   const mensaje = yaEstaba ? 'El servicio ya estaba desactivado.' : 'Servicio desactivado.';
+  responderOk(res, servicio, { mensaje });
+});
+
+// EXT-MS-R01 (extensión, no está en el ERS; D-018).
+rutasAdmin.patch('/:id/reactivar', async (req, res) => {
+  const { servicio, yaEstaba } = await logica.reactivar(idDeRuta(req.params.id));
+  const mensaje = yaEstaba ? 'El servicio ya estaba activo.' : 'Servicio reactivado.';
   responderOk(res, servicio, { mensaje });
 });

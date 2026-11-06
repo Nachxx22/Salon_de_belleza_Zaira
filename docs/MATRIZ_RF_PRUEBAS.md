@@ -23,6 +23,7 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 | MS-03 | Actualizar servicio | Alta | SCRUM-41 | SCRUM-95 | P0 | integrado | Pruebas automáticas de validación. Falta probar contra SQL Server (criterio 3: citas existentes no cambian). |
 | MS-04 | Desactivar servicio | Media | SCRUM-42 | SCRUM-96 | P0 | integrado | Baja lógica con confirmación en pantalla. Falta probar contra SQL Server. |
 | MS-05 | Consultar servicios (Administrador) | Alta | SCRUM-43 | SCRUM-97 | P0 | integrado | Listado administrativo con activos y desactivados. Falta probar contra SQL Server. |
+| EXT-MS-R01 | Reactivar servicio (**extensión acordada, no está en el ERS**; D-018) | — | — | — | P0 | integrado | Botón «Reactivar» con confirmación en servicios desactivados. Falta probar contra SQL Server. |
 
 ## Proveedores — Persona B (Ignacio)
 

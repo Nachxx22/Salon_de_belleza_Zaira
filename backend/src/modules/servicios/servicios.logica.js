@@ -86,3 +86,14 @@ export async function desactivar(id) {
   await datos.desactivar(id);
   return { servicio: await obtenerExistente(id), yaEstaba: false };
 }
+
+// EXT-MS-R01 Reactivar servicio (extensión acordada, no está en el ERS; D-018).
+// Vuelve a mostrarlo en el catálogo y en citas nuevas; no cambia citas ni ventas.
+export async function reactivar(id) {
+  const actual = await obtenerExistente(id);
+  if (actual.estado === 'Activo') {
+    return { servicio: actual, yaEstaba: true };
+  }
+  await datos.reactivar(id);
+  return { servicio: await obtenerExistente(id), yaEstaba: false };
+}

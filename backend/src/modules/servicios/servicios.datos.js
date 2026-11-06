@@ -91,3 +91,12 @@ export async function desactivar(id) {
   );
   return filasAfectadas;
 }
+
+// EXT-MS-R01 (extensión, no está en el ERS): vuelve a ofrecer un servicio desactivado.
+export async function reactivar(id) {
+  const { filasAfectadas } = await consulta(
+    `UPDATE dbo.Servicio SET Estado = N'Activo' WHERE Id = @id AND Estado = N'Desactivado'`,
+    { id },
+  );
+  return filasAfectadas;
+}

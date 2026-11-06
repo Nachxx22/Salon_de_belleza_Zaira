@@ -78,6 +78,7 @@ La sesión dura 8 horas de inactividad y se guarda en memoria del servidor: si e
 | POST | `/api/admin/servicios` | admin | MS-01 | `{ nombre, descripcion, precioAproximado, duracionMinutos, permiteDomicilio }` | `201 servicio` (queda `Activo`) |
 | PUT | `/api/admin/servicios/:id` | admin | MS-03 | igual que POST; no cambia el estado | `200 servicio` |
 | PATCH | `/api/admin/servicios/:id/desactivar` | admin | MS-04 | — | `200 servicio`; si ya estaba desactivado, responde igual con el mensaje «El servicio ya estaba desactivado.» |
+| PATCH | `/api/admin/servicios/:id/reactivar` | admin | **EXT-MS-R01** (extensión, no está en el ERS; D-018) | — | `200 servicio` en estado `Activo`; si ya estaba activo, responde igual con «El servicio ya estaba activo.» |
 
 Errores de validación: `400 DATOS_INVALIDOS`. Cuando faltan datos, el mensaje los enumera (por ejemplo «Faltan datos obligatorios: nombre, descripción.») y `detalles.campo` indica el primero. Reglas: nombre hasta 100 caracteres; descripción hasta 500; precio aproximado ≥ 0; duración entero mayor que cero; `permiteDomicilio` opcional, `false` por defecto.
 

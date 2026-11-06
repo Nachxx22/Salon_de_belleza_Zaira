@@ -111,12 +111,18 @@ export default function AdminServicios() {
     }
   }
 
-  async function desactivar(servicio) {
+  // MS-04 Desactivar y EXT-MS-R01 Reactivar (extensión, no está en el ERS; D-018).
+  async function cambiarEstado(servicio) {
     setExito('');
     setError('');
+    const reactivar = servicio.estado === 'Desactivado';
     try {
-      await api.patch(`/admin/servicios/${servicio.id}/desactivar`);
-      setExito(`"${servicio.nombre}" se desactivó. Ya no se ofrece para citas nuevas; el historial se conserva.`);
+      await api.patch(`/admin/servicios/${servicio.id}/${reactivar ? 'reactivar' : 'desactivar'}`);
+      setExito(
+        reactivar
+          ? `"${servicio.nombre}" se reactivó. Vuelve a aparecer en el catálogo y en citas nuevas.`
+          : `"${servicio.nombre}" se desactivó. Ya no se ofrece para citas nuevas; el historial se conserva.`,
+      );
       setConfirmarId(null);
       await cargar();
     } catch (e) {
@@ -229,14 +235,22 @@ export default function AdminServicios() {
                   <td>
                     {confirmarId === servicio.id ? (
                       <span>
-                        ¿Desactivar este servicio? <Boton variante="peligro" onClick={() => desactivar(servicio)}>Sí, desactivar</Boton>{' '}
+                        {servicio.estado === 'Activo' ? '¿Desactivar este servicio?' : '¿Reactivar este servicio?'}{' '}
+                        <Boton
+                          variante={servicio.estado === 'Activo' ? 'peligro' : 'primario'}
+                          onClick={() => cambiarEstado(servicio)}
+                        >
+                          {servicio.estado === 'Activo' ? 'Sí, desactivar' : 'Sí, reactivar'}
+                        </Boton>{' '}
                         <Boton variante="secundario" onClick={() => setConfirmarId(null)}>No</Boton>
                       </span>
                     ) : (
                       <span>
                         <Boton variante="secundario" onClick={() => abrirEdicion(servicio)}>Actualizar</Boton>{' '}
-                        {servicio.estado === 'Activo' && (
+                        {servicio.estado === 'Activo' ? (
                           <Boton variante="peligro" onClick={() => setConfirmarId(servicio.id)}>Desactivar</Boton>
+                        ) : (
+                          <Boton onClick={() => setConfirmarId(servicio.id)}>Reactivar</Boton>
                         )}
                       </span>
                     )}
