@@ -4,6 +4,7 @@
 import { consulta, enTransaccion } from '../../shared/db.js';
 import { fechaDeSql, horaDeSql } from '../../shared/fechas.js';
 import * as clientes from '../clientes/clientes.datos.js';
+import { tomarBloqueoAgenda } from '../agenda/agenda.datos.js';
 
 function ejecutar(tx) {
   return tx ? tx.consulta : consulta;
@@ -12,8 +13,9 @@ function ejecutar(tx) {
 // Todo lo que ocupa o limita la agenda de un día (MCA-12, restricción 11):
 // horarios regulares, bloqueos, citas Pendientes o Confirmadas y los períodos
 // reservados por solicitudes de reprogramación Pendientes.
-// Las horas se devuelven como 'HH:mm'.
-export async function leerAgendaDelDia(fecha, diaSemana, tx) {
+// Las horas se devuelven como 'HH:mm'. `excluirCitaId` deja fuera la propia cita
+// al reprogramarla (MCA-13), para que no choque consigo misma.
+export async function leerAgendaDelDia(fecha, diaSemana, tx, excluirCitaId = null) {
   const correr = ejecutar(tx);
   const horarios = await correr(
     'SELECT HoraInicio, HoraFin FROM dbo.Horario WHERE DiaSemana = @diaSemana ORDER BY HoraInicio',
@@ -28,14 +30,16 @@ export async function leerAgendaDelDia(fecha, diaSemana, tx) {
      FROM dbo.Cita c
      JOIN dbo.CitaServicio cs ON cs.CitaId = c.Id
      WHERE c.Fecha = CAST(@fecha AS DATE) AND c.Estado IN (N'Pendiente', N'Confirmada')
+       AND (@excluir IS NULL OR c.Id <> @excluir)
      GROUP BY c.Id, c.Hora
      UNION ALL
      SELECT s.HoraPropuesta, SUM(cs.DuracionAplicadaMinutos)
      FROM dbo.SolicitudCita s
      JOIN dbo.CitaServicio cs ON cs.CitaId = s.CitaId
      WHERE s.Estado = N'Pendiente' AND s.Tipo = N'Reprogramacion' AND s.FechaPropuesta = CAST(@fecha AS DATE)
+       AND (@excluir IS NULL OR s.CitaId <> @excluir)
      GROUP BY s.Id, s.HoraPropuesta`,
-    { fecha },
+    { fecha, excluir: excluirCitaId },
   );
   const tramo = (f) => ({ inicio: horaDeSql(f.HoraInicio), fin: horaDeSql(f.HoraFin) });
   return {
@@ -51,12 +55,7 @@ export async function leerAgendaDelDia(fecha, diaSemana, tx) {
 // Devuelve { conflicto: true } si el horario ya no está libre.
 export async function registrarCita(cita, estaDisponible) {
   return enTransaccion(async (tx) => {
-    await tx.consulta(
-      `DECLARE @resultado INT;
-       EXEC @resultado = sp_getapplock @Resource = N'agenda', @LockMode = N'Exclusive',
-            @LockOwner = N'Transaction', @LockTimeout = 10000;
-       IF @resultado < 0 THROW 51000, N'La agenda está ocupada en este momento. Intente de nuevo.', 1;`,
-    );
+    await tomarBloqueoAgenda(tx);
 
     const agenda = await leerAgendaDelDia(cita.fecha, cita.diaSemana, tx);
     if (!estaDisponible(agenda)) return { conflicto: true };
@@ -133,7 +132,9 @@ export async function listar({ fecha = null, estado = null, cliente = null } = {
 export async function obtenerDetalle(id) {
   const { filas } = await consulta(
     `SELECT c.Id, c.Codigo, c.Fecha, c.Hora, c.Estado, c.EsDomicilio, c.Direccion, c.Observaciones,
-            c.MotivoCancelacion, cl.Id AS ClienteId, cl.Nombre, cl.Telefono, cl.CorreoElectronico
+            c.MotivoCancelacion, cl.Id AS ClienteId, cl.Nombre, cl.Telefono, cl.CorreoElectronico,
+            CASE WHEN EXISTS (SELECT 1 FROM dbo.SolicitudCita s WHERE s.CitaId = c.Id AND s.Estado = N'Pendiente')
+                 THEN 1 ELSE 0 END AS SolicitudPendiente
      FROM dbo.Cita c
      JOIN dbo.Cliente cl ON cl.Id = c.ClienteId
      WHERE c.Id = @id`,
@@ -159,6 +160,7 @@ export async function obtenerDetalle(id) {
     direccion: f.Direccion,
     observaciones: f.Observaciones,
     motivoCancelacion: f.MotivoCancelacion,
+    tieneSolicitudPendiente: Boolean(f.SolicitudPendiente),
     cliente: clientes.aCliente({ Id: f.ClienteId, Nombre: f.Nombre, Telefono: f.Telefono, CorreoElectronico: f.CorreoElectronico }),
     servicios: servicios.filas.map((s) => ({
       id: s.Id,
@@ -167,4 +169,68 @@ export async function obtenerDetalle(id) {
       duracionAplicadaMinutos: s.DuracionAplicadaMinutos,
     })),
   };
+}
+
+class SinGuardar extends Error {
+  constructor(resultado) {
+    super('Operación revertida');
+    this.resultado = resultado;
+  }
+}
+
+async function transaccion(trabajo) {
+  try {
+    return await enTransaccion(trabajo);
+  } catch (error) {
+    if (error instanceof SinGuardar) return error.resultado;
+    throw error;
+  }
+}
+
+// Bloquea la cita para el resto de la transacción y devuelve lo necesario para
+// reprogramarla o cancelarla, o lanza SinGuardar si no aplica.
+async function citaParaCambiar(id, tx) {
+  const { filas } = await tx.consulta(
+    `SELECT c.Estado,
+            (SELECT SUM(cs.DuracionAplicadaMinutos) FROM dbo.CitaServicio cs WHERE cs.CitaId = c.Id) AS Duracion,
+            CASE WHEN EXISTS (SELECT 1 FROM dbo.SolicitudCita s WHERE s.CitaId = c.Id AND s.Estado = N'Pendiente')
+                 THEN 1 ELSE 0 END AS SolicitudPendiente
+     FROM dbo.Cita c WITH (UPDLOCK, ROWLOCK) WHERE c.Id = @id`,
+    { id },
+  );
+  const cita = filas[0];
+  if (!cita) throw new SinGuardar({ noExiste: true });
+  if (cita.Estado !== 'Confirmada') throw new SinGuardar({ noConfirmada: cita.Estado });
+  if (cita.SolicitudPendiente) throw new SinGuardar({ solicitudPendiente: true });
+  return { duracionMinutos: cita.Duracion ?? 0 };
+}
+
+// MCA-13: cambia fecha y hora de una cita Confirmada sin solicitud pendiente.
+// Con el bloqueo 'agenda' tomado vuelve a leer la agenda (sin la propia cita) y
+// pregunta a la lógica si el período sigue libre. Servicios y estado no cambian.
+// Devuelve { ok }, { noExiste }, { noConfirmada }, { solicitudPendiente } o { conflicto }.
+export async function reprogramarCita(id, { fecha, diaSemana, hora }, estaDisponible) {
+  return transaccion(async (tx) => {
+    await tomarBloqueoAgenda(tx);
+    const { duracionMinutos } = await citaParaCambiar(id, tx);
+    const agenda = await leerAgendaDelDia(fecha, diaSemana, tx, id);
+    if (!estaDisponible(agenda, duracionMinutos)) throw new SinGuardar({ conflicto: true });
+    await tx.consulta(
+      'UPDATE dbo.Cita SET Fecha = CAST(@fecha AS DATE), Hora = CAST(@hora AS TIME(0)) WHERE Id = @id',
+      { id, fecha, hora },
+    );
+    return { ok: true };
+  });
+}
+
+// MCA-14: cancela una cita Confirmada sin solicitud pendiente y guarda el motivo.
+export async function cancelarCita(id, motivo) {
+  return transaccion(async (tx) => {
+    await citaParaCambiar(id, tx);
+    await tx.consulta(
+      "UPDATE dbo.Cita SET Estado = N'Cancelada', MotivoCancelacion = @motivo WHERE Id = @id",
+      { id, motivo },
+    );
+    return { ok: true };
+  });
 }

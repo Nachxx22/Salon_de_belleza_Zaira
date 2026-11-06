@@ -11,8 +11,8 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 
 | Código | Requerimiento | Prioridad ERS | Jira RF | Jira CU | Fase | Estado | Prueba |
 |---|---|---|---|---|---|---|---|
-| MA-01 | Iniciar sesión | Alta | SCRUM-99 | SCRUM-101 | P0 | en curso | Estructura inicial: login en servidor y React; pruebas automáticas de rutas protegidas. Falta probar con SQL Server. |
-| MA-02 | Cerrar sesión | Alta | SCRUM-100 | SCRUM-102 | P0 | en curso | Estructura inicial: cierre de sesión en servidor y React. Falta probar con SQL Server. |
+| MA-01 | Iniciar sesión | Alta | SCRUM-99 | SCRUM-101 | P0 | probado | Login, cierre de sesión y panel protegido probados con SQL Server (5 nov) y de punta a punta en `npm run api:integracion` (CI). |
+| MA-02 | Cerrar sesión | Alta | SCRUM-100 | SCRUM-102 | P0 | probado | Login, cierre de sesión y panel protegido probados con SQL Server (5 nov) y de punta a punta en `npm run api:integracion` (CI). |
 
 ## Servicios — Persona B (Ignacio)
 
@@ -51,10 +51,10 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 
 | Código | Requerimiento | Prioridad ERS | Jira RF | Jira CU | Fase | Estado | Prueba |
 |---|---|---|---|---|---|---|---|
-| MV-01 | Registrar venta | Alta | SCRUM-35 | SCRUM-89 | P0 | integrado | Venta de productos y/o servicios en una transacción con el stock (Stock >= cantidad), «Cantidad insuficiente», pago confirmado, total del servidor. Pruebas de reglas y de punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MV-02 | Consultar venta | Alta | SCRUM-36 | SCRUM-90 | P0 | integrado | Listado con filtros por código, fechas, cliente, método y estado; detalle con precios registrados. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MV-03 | Anular venta | Media | SCRUM-38 | SCRUM-92 | P0 | integrado | Motivo obligatorio, confirmación, repone el stock en la misma transacción, no se anula dos veces. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| EXT-MV-U01 | Actualizar venta (**extensión acordada, no está en el ERS**) | — | — | — | P0 | integrado | Corrección con motivo en una transacción: guarda la versión anterior en RevisionVenta, revierte y aplica el stock, conserva código, fecha y precios originales; no corrige ventas anuladas. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MV-01 | Registrar venta | Alta | SCRUM-35 | SCRUM-89 | P0 | probado | Venta de productos y/o servicios en una transacción con el stock (Stock >= cantidad), «Cantidad insuficiente», pago confirmado, total del servidor. Pruebas de reglas y de punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MV-02 | Consultar venta | Alta | SCRUM-36 | SCRUM-90 | P0 | probado | Listado con filtros por código, fechas, cliente, método y estado; detalle con precios registrados. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MV-03 | Anular venta | Media | SCRUM-38 | SCRUM-92 | P0 | probado | Motivo obligatorio, confirmación, repone el stock en la misma transacción, no se anula dos veces. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| EXT-MV-U01 | Actualizar venta (**extensión acordada, no está en el ERS**) | — | — | — | P0 | probado | Corrección con motivo en una transacción: guarda la versión anterior en RevisionVenta, revierte y aplica el stock, conserva código, fecha y precios originales; no corrige ventas anuladas. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
 
 ## Citas y Agenda — Persona A
 
@@ -67,13 +67,13 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 | MCA-05 | Consultar solicitudes pendientes | Alta | SCRUM-15 | SCRUM-69 | P1 | pendiente | |
 | MCA-06 | Procesar solicitud pendiente | Alta | SCRUM-16 | SCRUM-70 | P1 | pendiente | |
 | MCA-07 | Marcar cita como completada | Alta | SCRUM-17 | SCRUM-71 | P1 | pendiente | |
-| MCA-08 | Registrar configuración de agenda | Media | SCRUM-18 | SCRUM-72 | P0 | pendiente | |
-| MCA-09 | Consultar configuración de agenda | Media | SCRUM-19 | SCRUM-73 | P0 | pendiente | |
-| MCA-10 | Modificar configuración de agenda | Media | SCRUM-20 | SCRUM-74 | P0 | pendiente | |
-| MCA-11 | Eliminar configuración de agenda | Media | SCRUM-21 | SCRUM-75 | P0 | pendiente | |
+| MCA-08 | Registrar configuración de agenda | Media | SCRUM-18 | SCRUM-72 | P0 | integrado | Horario regular o bloqueo; rango válido; sin superposiciones; un bloqueo no tapa citas ni reservas. Pruebas de reglas y de punta a punta con SQL Server (CI). Programado por Ignacio a pedido (D-019, D-023). Falta probar en pantalla. |
+| MCA-09 | Consultar configuración de agenda | Media | SCRUM-19 | SCRUM-73 | P0 | integrado | Horarios y bloqueos por separado, con mensajes si no hay. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MCA-10 | Modificar configuración de agenda | Media | SCRUM-20 | SCRUM-74 | P0 | integrado | No deja fuera citas Confirmadas ni reservas Pendientes; la disponibilidad usa el cambio. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MCA-11 | Eliminar configuración de agenda | Media | SCRUM-21 | SCRUM-75 | P0 | integrado | Con confirmación; un horario no se elimina si deja fuera citas o reservas; el bloqueo solo retira la restricción. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
 | MCA-12 | Crear cita (Administrador) | Media | SCRUM-22 | SCRUM-76 | P0 | probado | Programado para la Integración 1 (D-019). Pruebas del algoritmo de disponibilidad y de punta a punta con SQL Server (horario ocupado, cliente nuevo y existente, domicilio, sin servicios). Probado en pantalla con SQL Server (6 nov). Falta revisión de Persona A. |
-| MCA-13 | Reprogramar cita (Administrador) | Media | SCRUM-23 | SCRUM-77 | P0 | pendiente | |
-| MCA-14 | Cancelar cita (Administrador) | Media | SCRUM-24 | SCRUM-78 | P0 | pendiente | |
+| MCA-13 | Reprogramar cita (Administrador) | Media | SCRUM-23 | SCRUM-77 | P0 | integrado | Solo Confirmadas sin solicitud pendiente; mismos servicios; disponibilidad sin la propia cita y verificada otra vez con el bloqueo agenda. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MCA-14 | Cancelar cita (Administrador) | Media | SCRUM-24 | SCRUM-78 | P0 | integrado | Motivo obligatorio y confirmación; queda Cancelada y libera el período. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
 
 ## Requerimientos no funcionales
 

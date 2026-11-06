@@ -72,5 +72,5 @@ jobs:
       - run: npm run db:admin
       - name: Verificar tablas, restricciones, hora de Costa Rica y login
         run: npm run db:verificar
-      - name: Pruebas de punta a punta (acceso, servicios, citas, proveedores, productos y ventas)
+      - name: Pruebas de punta a punta (acceso, servicios, citas, agenda, proveedores, productos y ventas)
         run: npm run api:integracion

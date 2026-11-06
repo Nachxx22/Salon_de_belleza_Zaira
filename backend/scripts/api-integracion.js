@@ -1,6 +1,7 @@
 // Pruebas de punta a punta contra SQL Server real: Integración 1 (acceso +
 // servicios + citas), paso 7 (proveedores y productos), paso 8 (ventas) y
-// paso 9 (EXT-MV-U01 corregir venta, extensión que no está en el ERS).
+// paso 9 (EXT-MV-U01 corregir venta, extensión que no está en el ERS) y
+// hito P0 (configuración de agenda, reprogramar y cancelar citas).
 // Uso: npm run api:integracion  (lee backend/.env; necesita db:migrar, db:semillas y db:admin)
 //
 // OJO: deja datos de prueba (un servicio, un cliente y citas). Úsenlo en una
@@ -410,6 +411,97 @@ try {
   });
   stock = await stockDe();
   revisar('y el stock no cambia', () => assert.equal(stock, 5));
+
+  // 14. Configuración de agenda (MCA-08 a MCA-11). En `fecha` (lunes) hay dos citas
+  //     Confirmadas del paso 3: hora1 (09:00) y 16:00 (60 min).
+  console.log('Configuración de agenda');
+  r = await llamar('GET', '/admin/agenda');
+  const horarioLunes = r.cuerpo.data.horarios.find((h) => h.diaSemana === 1);
+  revisar('se consultan horarios regulares y bloqueos por separado (MCA-09)', () => {
+    assert.ok(horarioLunes, 'el lunes tiene horario en las semillas');
+    assert.ok(Array.isArray(r.cuerpo.data.bloqueos));
+  });
+  r = await llamar('POST', '/admin/agenda/horarios', { diaSemana: 1, horaInicio: '12:00', horaFin: '12:00' });
+  revisar('la hora final debe ser posterior a la inicial (MCA-08, criterio 4)', () => assert.equal(r.cuerpo.codigo, 'DATOS_INVALIDOS'));
+  r = await llamar('POST', '/admin/agenda/horarios', { diaSemana: 1, horaInicio: '17:00', horaFin: '19:00' });
+  revisar('no se superponen horarios del mismo día (MCA-08, criterio 5)', () => assert.equal(r.cuerpo.codigo, 'AGENDA_SUPERPOSICION'));
+  r = await llamar('POST', '/admin/agenda/horarios', { diaSemana: 7, horaInicio: '10:00', horaFin: '12:00' });
+  revisar('se registra un horario regular para el domingo (MCA-08)', () => assert.equal(r.estado, 201, JSON.stringify(r.cuerpo)));
+  const horarioDomingo = r.cuerpo.data;
+  const domingo = new Date(`${fecha}T00:00:00Z`);
+  domingo.setUTCDate(domingo.getUTCDate() + 6);
+  const fechaDomingo = domingo.toISOString().slice(0, 10);
+  r = await llamar('GET', `/admin/citas/disponibilidad?fecha=${fechaDomingo}&servicios=${servicio.id}`);
+  revisar('el horario nuevo se usa para la disponibilidad (MCA-08, criterio 8)', () => assert.deepEqual(r.cuerpo.data.horarios, ['10:00', '10:30', '11:00']));
+  r = await llamar('PUT', `/admin/agenda/horarios/${horarioDomingo.id}`, { diaSemana: 7, horaInicio: '10:00', horaFin: '13:00' });
+  r = await llamar('GET', `/admin/citas/disponibilidad?fecha=${fechaDomingo}&servicios=${servicio.id}`);
+  revisar('al modificarlo, la disponibilidad usa el horario nuevo (MCA-10, criterio 10)', () => assert.ok(r.cuerpo.data.horarios.includes('12:00')));
+  r = await llamar('DELETE', `/admin/agenda/horarios/${horarioDomingo.id}`);
+  r = await llamar('GET', `/admin/citas/disponibilidad?fecha=${fechaDomingo}&servicios=${servicio.id}`);
+  revisar('al eliminarlo, el domingo vuelve a no tener horas (MCA-11, criterio 9)', () => assert.deepEqual(r.cuerpo.data.horarios, []));
+
+  r = await llamar('PUT', `/admin/agenda/horarios/${horarioLunes.id}`, { diaSemana: 1, horaInicio: '10:00', horaFin: '18:00' });
+  revisar('modificar el horario no puede dejar fuera una cita confirmada (MCA-10, criterio 6)', () => {
+    assert.equal(r.cuerpo.codigo, 'AGENDA_CITAS_AFECTADAS');
+    assert.match(r.cuerpo.mensaje, new RegExp(cita1.codigo));
+  });
+  r = await llamar('DELETE', `/admin/agenda/horarios/${horarioLunes.id}`);
+  revisar('tampoco se puede eliminar si deja fuera citas confirmadas (MCA-11, criterio 3)', () => assert.equal(r.cuerpo.codigo, 'AGENDA_CITAS_AFECTADAS'));
+
+  r = await llamar('POST', '/admin/agenda/bloqueos', { fecha, horaInicio: hora1, horaFin: '10:00' });
+  revisar('un bloqueo no puede tapar una cita confirmada (MCA-08, criterio 6)', () => assert.equal(r.cuerpo.codigo, 'AGENDA_CITAS_AFECTADAS'));
+  r = await llamar('POST', '/admin/agenda/bloqueos', { fecha, horaInicio: '12:00', horaFin: '13:00' });
+  revisar('se registra un bloqueo libre (MCA-08)', () => assert.equal(r.estado, 201, JSON.stringify(r.cuerpo)));
+  const bloqueo = r.cuerpo.data;
+  r = await llamar('GET', ruta(servicio.id));
+  revisar('el bloqueo se descuenta de la disponibilidad (MCA-08, criterio 8)', () => {
+    assert.ok(!r.cuerpo.data.horarios.includes('12:00'));
+    assert.ok(!r.cuerpo.data.horarios.includes('11:30')); // 11:30 + 60 min choca con el bloqueo
+  });
+  r = await llamar('POST', '/admin/agenda/bloqueos', { fecha, horaInicio: '12:30', horaFin: '13:30' });
+  revisar('no se superponen bloqueos de la misma fecha (MCA-08, criterio 5)', () => assert.equal(r.cuerpo.codigo, 'AGENDA_SUPERPOSICION'));
+  r = await llamar('PUT', `/admin/agenda/bloqueos/${bloqueo.id}`, { fecha, horaInicio: '16:00', horaFin: '17:00' });
+  revisar('modificar el bloqueo hacia una cita confirmada se rechaza (MCA-10, criterio 6)', () => assert.equal(r.cuerpo.codigo, 'AGENDA_CITAS_AFECTADAS'));
+  r = await llamar('PUT', `/admin/agenda/bloqueos/${bloqueo.id}`, { fecha, horaInicio: '12:30', horaFin: '13:30' });
+  revisar('se modifica el bloqueo a un período libre (MCA-10, criterio 8)', () => assert.equal(r.cuerpo.data.horaInicio, '12:30'));
+  r = await llamar('DELETE', `/admin/agenda/bloqueos/${bloqueo.id}`);
+  r = await llamar('GET', '/admin/agenda');
+  revisar('el bloqueo eliminado deja de mostrarse (MCA-11, criterio 10)', () => assert.ok(!r.cuerpo.data.bloqueos.some((b) => b.id === bloqueo.id)));
+
+  // 15. Reprogramar (MCA-13) y cancelar (MCA-14) por la administradora.
+  console.log('Reprogramar y cancelar citas');
+  r = await llamar('GET', `/admin/citas?fecha=${fecha}&cliente=${telefono}`);
+  const cita2 = r.cuerpo.data.find((c) => c.hora === '16:00');
+  r = await llamar('GET', `/admin/citas/${cita1.id}/disponibilidad?fecha=${fecha}`);
+  revisar('la disponibilidad para reprogramar no choca con la propia cita (MCA-13, criterio 6)', () => {
+    assert.equal(r.cuerpo.data.duracionTotalMinutos, 30);
+    assert.ok(r.cuerpo.data.horarios.includes(hora1));
+    assert.ok(!r.cuerpo.data.horarios.includes('16:00'));
+  });
+  r = await llamar('PATCH', `/admin/citas/${cita1.id}/reprogramar`, { fecha, hora: '10:00' });
+  revisar('se reprograma: sigue Confirmada, con los mismos servicios (MCA-13, criterios 1, 3 y 9)', () => {
+    assert.equal(r.estado, 200, JSON.stringify(r.cuerpo));
+    assert.equal(r.cuerpo.data.hora, '10:00');
+    assert.equal(r.cuerpo.data.estado, 'Confirmada');
+    assert.equal(r.cuerpo.data.codigo, cita1.codigo);
+    assert.deepEqual(r.cuerpo.data.servicios.map((s) => s.duracionAplicadaMinutos), [30]);
+  });
+  r = await llamar('PATCH', `/admin/citas/${cita2.id}/reprogramar`, { fecha, hora: '10:00' });
+  revisar('no se reprograma a un período ocupado (MCA-13, criterio 8)', () => assert.equal(r.cuerpo.codigo, 'HORARIO_OCUPADO'));
+
+  r = await llamar('PATCH', `/admin/citas/${cita1.id}/cancelar`, { motivo: '' });
+  revisar('el motivo de cancelación es obligatorio (MCA-14, criterio 4)', () => assert.equal(r.cuerpo.codigo, 'DATOS_INVALIDOS'));
+  r = await llamar('PATCH', `/admin/citas/${cita1.id}/cancelar`, { motivo: 'La clienta llamó para cancelar.' });
+  revisar('se cancela con su motivo y no se elimina (MCA-14, criterios 6 y 7)', () => {
+    assert.equal(r.cuerpo.data.estado, 'Cancelada');
+    assert.equal(r.cuerpo.data.motivoCancelacion, 'La clienta llamó para cancelar.');
+  });
+  r = await llamar('GET', ruta(servicio.id));
+  revisar('el período de la cita cancelada queda libre (MCA-14, criterio 8)', () => assert.ok(r.cuerpo.data.horarios.includes('10:00')));
+  r = await llamar('PATCH', `/admin/citas/${cita1.id}/cancelar`, { motivo: 'Otra vez.' });
+  revisar('una cita cancelada no se cancela otra vez (MCA-14, criterio 2)', () => assert.equal(r.cuerpo.codigo, 'CITA_NO_CONFIRMADA'));
+  r = await llamar('PATCH', `/admin/citas/${cita1.id}/reprogramar`, { fecha, hora: '11:00' });
+  revisar('ni se reprograma (MCA-13, criterio 2)', () => assert.equal(r.cuerpo.codigo, 'CITA_NO_CONFIRMADA'));
 
   r = await llamar('POST', '/auth/logout');
   revisar('la administradora cierra sesión (MA-02)', () => assert.equal(r.estado, 200));

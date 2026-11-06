@@ -104,7 +104,7 @@ Forma de un servicio en las respuestas:
 - Un servicio `Desactivado` no se ofrece para citas nuevas, pero sigue apareciendo en citas y ventas anteriores.
 - No se renombran ni eliminan estos campos sin acuerdo de los dos.
 
-## Citas (Integración 1: MCA-04 y MCA-12) — Persona A
+## Citas (MCA-04, MCA-12, MCA-13 y MCA-14) — Persona A
 
 Programado por Ignacio a pedido del equipo para la Integración 1 (D-019); el módulo sigue siendo de Persona A.
 
@@ -115,6 +115,9 @@ Programado por Ignacio a pedido del equipo para la Integración 1 (D-019); el m�
 | GET | `/api/admin/citas/disponibilidad` | MCA-12 | `?fecha=YYYY-MM-DD&servicios=1,2` | `200 { fecha, duracionTotalMinutos, horarios: ["09:00", "09:30", ...] }` |
 | GET | `/api/admin/citas/clientes` | MCA-12 | `?telefono=8888-7777` | `200 cliente` o `200 null` si no existe |
 | POST | `/api/admin/citas` | MCA-12 | ver abajo | `201 detalle`, estado `Confirmada`; no crea `SolicitudCita` |
+| GET | `/api/admin/citas/:id/disponibilidad` | MCA-13 | `?fecha=YYYY-MM-DD` | `200 { fecha, duracionTotalMinutos, horarios }` sin contar la propia cita |
+| PATCH | `/api/admin/citas/:id/reprogramar` | MCA-13 | `{ fecha, hora }` | `200 detalle`; sigue `Confirmada`, mismos servicios |
+| PATCH | `/api/admin/citas/:id/cancelar` | MCA-14 | `{ motivo }` (obligatorio, hasta 500) | `200 detalle`, estado `Cancelada` |
 
 Cuerpo de `POST /api/admin/citas`:
 
@@ -132,9 +135,26 @@ Cuerpo de `POST /api/admin/citas`:
 
 - Si ya existe un cliente con ese teléfono, la cita se asocia a él y no se cambian sus datos; si no, se crea en la misma transacción.
 - Resumen (listado): `{ id, codigo, fecha, hora, horaFin, duracionMinutos, estado, esDomicilio, cliente: { nombre, telefono }, servicios: "Corte, Tinte" }`.
-- Detalle: `{ id, codigo, fecha, hora, horaFin, duracionMinutos, estado, esDomicilio, direccion, observaciones, motivoCancelacion, cliente: { id, nombre, telefono, correoElectronico }, servicios: [{ id, nombre, estado, duracionAplicadaMinutos }] }`.
-- Códigos de negocio: `409 HORARIO_OCUPADO` («El horario seleccionado ya no está disponible. Seleccione otro horario.»), `409 SERVICIO_NO_DISPONIBLE`, `409 DOMICILIO_NO_DISPONIBLE`, `400 FECHA_PASADA`.
+- Detalle: `{ id, codigo, fecha, hora, horaFin, duracionMinutos, estado, esDomicilio, direccion, observaciones, motivoCancelacion, tieneSolicitudPendiente, cliente: { id, nombre, telefono, correoElectronico }, servicios: [{ id, nombre, estado, duracionAplicadaMinutos }] }`.
+- Códigos de negocio: `409 HORARIO_OCUPADO` («El horario seleccionado ya no está disponible. Seleccione otro horario.»), `409 SERVICIO_NO_DISPONIBLE`, `409 DOMICILIO_NO_DISPONIBLE`, `400 FECHA_PASADA`, `409 CITA_NO_CONFIRMADA` (reprogramar o cancelar una cita que no está Confirmada), `409 SOLICITUD_PENDIENTE` (primero se procesa la solicitud con MCA-06).
 - La disponibilidad se calcula con un solo algoritmo en el servidor (`horariosDisponibles` en `citas.logica.js`): horas cada 30 minutos dentro del horario regular, donde cabe la duración total, sin chocar con bloqueos, citas `Pendiente` o `Confirmada` ni reprogramaciones `Pendiente`. Al registrar se vuelve a verificar con el bloqueo `agenda` tomado (D-016).
+
+## Configuración de agenda (MCA-08 a MCA-11) — Persona A
+
+| Método | Ruta | Requerimiento | Entrada | Respuesta |
+|---|---|---|---|---|
+| GET | `/api/admin/agenda` | MCA-09 | — | `200 { horarios: [{ id, tipo: "Horario regular", diaSemana, dia, horaInicio, horaFin }], bloqueos: [{ id, tipo: "Bloqueo de agenda", fecha, horaInicio, horaFin }] }` |
+| POST | `/api/admin/agenda/horarios` | MCA-08 | `{ diaSemana: 1-7, horaInicio: "HH:mm", horaFin }` | `201 horario` |
+| PUT | `/api/admin/agenda/horarios/:id` | MCA-10 | igual que POST | `200 horario` |
+| DELETE | `/api/admin/agenda/horarios/:id` | MCA-11 | — | `200` con el horario eliminado |
+| POST | `/api/admin/agenda/bloqueos` | MCA-08 | `{ fecha, horaInicio, horaFin }` | `201 bloqueo` |
+| PUT | `/api/admin/agenda/bloqueos/:id` | MCA-10 | igual que POST | `200 bloqueo` |
+| DELETE | `/api/admin/agenda/bloqueos/:id` | MCA-11 | — | `200` con el bloqueo eliminado |
+
+- `diaSemana`: 1 lunes … 7 domingo. La hora final debe ser posterior a la inicial (`400 DATOS_INVALIDOS`); un bloqueo no puede ser de una fecha pasada (`400 FECHA_PASADA`).
+- `409 AGENDA_SUPERPOSICION`: se superpone con otro horario del mismo día o con otro bloqueo de la misma fecha (tocarse, como 12:00 y 12:00, sí se permite).
+- `409 AGENDA_CITAS_AFECTADAS`: dejaría fuera (horario) o taparía (bloqueo) una cita futura Confirmada; el mensaje lista los códigos. `409 AGENDA_RESERVAS_AFECTADAS`: lo mismo con citas Pendientes o reprogramaciones Pendientes.
+- Ninguna operación cambia citas ni solicitudes. Todas toman el bloqueo `agenda` (D-016).
 
 ## Proveedores — Persona B
 

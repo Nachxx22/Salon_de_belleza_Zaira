@@ -139,3 +139,13 @@ Otras decisiones del paso 7: el catálogo público de productos no muestra stock
 - Las filas de `VentaProducto` y `VentaServicio` se reemplazan; la versión anterior completa queda en `RevisionVenta`, así que no se pierde historial. La venta nunca se borra.
 - El detalle de la venta (MV-02) muestra las correcciones con su fecha y motivo.
 - Formulario de venta: los servicios muestran el precio aproximado guardado solo como referencia; el precio final se escribe en colones enteros.
+
+## D-023 — Agenda, reprogramar y cancelar para el hito P0 (6 nov 2026)
+
+- **Quién:** igual que en D-019, Ignacio programó a pedido del equipo MCA-08 a MCA-11 (configuración de agenda), MCA-13 (reprogramar) y MCA-14 (cancelar), que son del módulo de Persona A. Ella los revisa y continúa con los P1 (MCA-01 a MCA-03, MCA-05 a MCA-07).
+- **«Futuras»:** al cambiar o eliminar un horario regular se revisan las citas Pendientes o Confirmadas y las reprogramaciones Pendientes de ese día de la semana desde ahora (hora de Costa Rica) en adelante. Una ocupación debe quedar completa dentro de un tramo del día (los tramos que se tocan se unen). Para un bloqueo se revisa la fecha completa.
+- **Mensajes:** si hay alguna cita Confirmada afectada se responde `AGENDA_CITAS_AFECTADAS` («citas activas» del ERS); si solo hay citas o reprogramaciones Pendientes, `AGENDA_RESERVAS_AFECTADAS`. El mensaje lista los códigos para que la administradora los ubique.
+- **Bloqueos de fechas pasadas:** se rechazan (`FECHA_PASADA`).
+- **Eliminar:** una configuración de agenda no es historial, así que MCA-11 elimina el registro. Ninguna operación de agenda cambia citas ni solicitudes.
+- **Reprogramar:** la disponibilidad excluye la propia cita (puede moverse dentro de su mismo horario) y se verifica otra vez dentro de la transacción con el bloqueo `agenda`. La cita conserva servicios, duración aplicada y código.
+- **Bloqueo `agenda`:** `tomarBloqueoAgenda` quedó en `agenda.datos.js` y lo usan Agenda y Citas (D-016).

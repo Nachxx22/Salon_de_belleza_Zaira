@@ -240,3 +240,68 @@ export async function detalle(id) {
   const duracionMinutos = cita.servicios.reduce((total, s) => total + s.duracionAplicadaMinutos, 0);
   return { ...cita, duracionMinutos, horaFin: aHora(aMinutos(cita.hora) + duracionMinutos) };
 }
+
+// ---------------------------------------------------------------------------
+// MCA-13 Reprogramar cita (Administrador) y MCA-14 Cancelar cita (Administrador)
+// ---------------------------------------------------------------------------
+
+// Errores comunes: solo citas Confirmadas sin una solicitud Pendiente (MCA-13 y MCA-14, restricciones 1 a 3).
+function errorDeCambio(resultado, accion) {
+  if (resultado.noExiste) return errores.noEncontrado('No existe la cita solicitada.');
+  if (resultado.noConfirmada) {
+    return new ErrorApp(409, 'CITA_NO_CONFIRMADA',
+      `Solo se pueden ${accion} citas Confirmadas; esta cita está ${resultado.noConfirmada}.`);
+  }
+  if (resultado.solicitudPendiente) {
+    return new ErrorApp(409, 'SOLICITUD_PENDIENTE',
+      `La cita tiene una solicitud pendiente: primero debe procesarse (MCA-06) antes de ${accion}la.`);
+  }
+  return null;
+}
+
+function verificarCambiable(cita, accion) {
+  const error = errorDeCambio(
+    { noConfirmada: cita.estado !== 'Confirmada' ? cita.estado : null, solicitudPendiente: cita.tieneSolicitudPendiente },
+    accion,
+  );
+  if (error) throw error;
+}
+
+// MCA-13 pasos 5-7: horas libres para la nueva fecha, con la duración de los servicios de la cita.
+export async function disponibilidadReprogramar(id, valorFecha, ahora = new Date()) {
+  const cita = await detalle(id);
+  verificarCambiable(cita, 'reprogramar');
+  const dia = validarFecha(valorFecha);
+  const opciones = opcionesDeFecha(dia, ahora);
+  const agenda = await datos.leerAgendaDelDia(dia, diaSemana(dia), null, id);
+  return { fecha: dia, duracionTotalMinutos: cita.duracionMinutos, horarios: horariosDisponibles(agenda, cita.duracionMinutos, opciones) };
+}
+
+// MCA-13: nueva fecha y hora; servicios y estado Confirmada se conservan; no crea SolicitudCita.
+export async function reprogramar(id, entrada = {}, ahora = new Date()) {
+  const fechaNueva = validarFecha(entrada.fecha);
+  const hora = validarHoraInicio(entrada.hora);
+  const opciones = opcionesDeFecha(fechaNueva, ahora);
+  const resultado = await datos.reprogramarCita(
+    id,
+    { fecha: fechaNueva, diaSemana: diaSemana(fechaNueva), hora },
+    (agenda, duracion) => horariosDisponibles(agenda, duracion, opciones).includes(hora),
+  );
+  const error = errorDeCambio(resultado, 'reprogramar');
+  if (error) throw error;
+  if (resultado.conflicto) {
+    throw new ErrorApp(409, 'HORARIO_OCUPADO', 'El horario seleccionado ya no está disponible. Seleccione otro horario.', { campo: 'hora' });
+  }
+  return detalle(id);
+}
+
+// MCA-14: motivo obligatorio; la cita pasa a Cancelada y libera su período.
+export async function cancelar(id, entrada = {}) {
+  const vacioMotivo = entrada.motivo === undefined || entrada.motivo === null || String(entrada.motivo).trim() === '';
+  if (vacioMotivo) throw errores.datosInvalidos('El motivo de cancelación es obligatorio.', { campo: 'motivo' });
+  const motivo = textoRequerido(entrada.motivo, 'motivo', { max: 500 });
+  const resultado = await datos.cancelarCita(id, motivo);
+  const error = errorDeCambio(resultado, 'cancelar');
+  if (error) throw error;
+  return detalle(id);
+}

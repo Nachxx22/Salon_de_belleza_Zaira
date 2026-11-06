@@ -6,10 +6,11 @@
 //   GET    /api/admin/citas/clientes           MCA-12 buscar cliente por teléfono (?telefono=)
 //   GET    /api/admin/citas/:id                MCA-04 detalle de una cita
 //   POST   /api/admin/citas                    MCA-12 crear cita (administradora), queda Confirmada
+//   GET    /api/admin/citas/:id/disponibilidad MCA-13 horas libres para reprogramar (?fecha=)
+//   PATCH  /api/admin/citas/:id/reprogramar    MCA-13 reprogramar cita (administradora)
+//   PATCH  /api/admin/citas/:id/cancelar       MCA-14 cancelar cita (administradora)
 //
 // Propuestas, pendientes (confirmarlas en docs/CONTRATOS_API.md antes de programarlas):
-//   PATCH  /api/admin/citas/:id/reprogramar   MCA-13 reprogramar cita (administradora)
-//   PATCH  /api/admin/citas/:id/cancelar      MCA-14 cancelar cita (administradora)
 //   PATCH  /api/admin/citas/:id/completar     MCA-07 marcar cita como completada
 //   GET    /api/publico/citas/disponibilidad  Horarios disponibles para el cliente (con anticipación mínima)
 //   POST   /api/publico/citas                 MCA-01 crear cita (cliente), queda Pendiente
@@ -52,4 +53,18 @@ rutasAdmin.post('/', async (req, res) => {
   const { cita, clienteNuevo } = await logica.crearCitaAdmin(req.body);
   const mensaje = `Cita ${cita.codigo} registrada como Confirmada.${clienteNuevo ? ' Se registró al cliente nuevo.' : ''}`;
   responderCreado(res, cita, mensaje);
+});
+
+rutasAdmin.get('/:id/disponibilidad', async (req, res) => {
+  responderOk(res, await logica.disponibilidadReprogramar(idDeRuta(req.params.id), req.query.fecha));
+});
+
+rutasAdmin.patch('/:id/reprogramar', async (req, res) => {
+  const cita = await logica.reprogramar(idDeRuta(req.params.id), req.body);
+  responderOk(res, cita, { mensaje: `Cita ${cita.codigo} reprogramada para el ${cita.fecha} a las ${cita.hora}. Sigue Confirmada.` });
+});
+
+rutasAdmin.patch('/:id/cancelar', async (req, res) => {
+  const cita = await logica.cancelar(idDeRuta(req.params.id), req.body);
+  responderOk(res, cita, { mensaje: `Cita ${cita.codigo} cancelada. El período quedó libre.` });
 });
