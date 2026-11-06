@@ -49,8 +49,8 @@ export async function leerAgendaDelDia(fecha, diaSemana, tx, excluirCitaId = nul
   };
 }
 
-// MCA-12: registra cliente (si no existe), cita Confirmada y sus servicios en una
-// sola transacción. Toma el bloqueo de aplicación 'agenda' (D-016) y vuelve a
+// MCA-12 y MCA-01: registra cliente (si no existe), cita (Confirmada o Pendiente),
+// sus servicios y, si es del cliente, su SolicitudCita de creación, en una sola transacción. Toma el bloqueo de aplicación 'agenda' (D-016) y vuelve a
 // leer la agenda; `estaDisponible(agenda)` es la regla de citas.logica.js.
 // Devuelve { conflicto: true } si el horario ya no está libre.
 export async function registrarCita(cita, estaDisponible) {
@@ -89,6 +89,10 @@ export async function registrarCita(cita, estaDisponible) {
          VALUES (@citaId, @servicioId, @duracion)`,
         { citaId: id, servicioId: servicio.id, duracion: servicio.duracionMinutos },
       );
+    }
+    // MCA-01: la cita del cliente nace Pendiente con su SolicitudCita de creación (restricciones 16 y 18).
+    if (cita.conSolicitudCreacion) {
+      await tx.consulta("INSERT INTO dbo.SolicitudCita (CitaId, Tipo) VALUES (@citaId, N'Creacion')", { citaId: id });
     }
     return { conflicto: false, id, clienteNuevo };
   });
@@ -231,6 +235,64 @@ export async function cancelarCita(id, motivo) {
       "UPDATE dbo.Cita SET Estado = N'Cancelada', MotivoCancelacion = @motivo WHERE Id = @id",
       { id, motivo },
     );
+    return { ok: true };
+  });
+}
+
+// Citas públicas: la cita que corresponde a ese código y ese teléfono, o null
+// (MCA-02 y MCA-03, restricción 2). No dice cuál de los dos datos no coincide.
+export async function idPorCodigoYTelefono(codigo, telefono) {
+  const { filas } = await consulta(
+    `SELECT c.Id FROM dbo.Cita c JOIN dbo.Cliente cl ON cl.Id = c.ClienteId
+     WHERE c.Codigo = @codigo AND cl.Telefono = @telefono`,
+    { codigo, telefono },
+  );
+  return filas[0]?.Id ?? null;
+}
+
+// Tipo de la solicitud Pendiente de una cita, o null.
+export async function tipoSolicitudPendiente(citaId) {
+  const { filas } = await consulta(
+    "SELECT Tipo FROM dbo.SolicitudCita WHERE CitaId = @citaId AND Estado = N'Pendiente'",
+    { citaId },
+  );
+  return filas[0]?.Tipo ?? null;
+}
+
+// MCA-02: con el bloqueo 'agenda' tomado verifica el período propuesto (sin la
+// propia cita), registra la SolicitudCita de reprogramación con la fecha y hora
+// propuestas y pasa la cita a Pendiente. La fecha y hora originales no cambian:
+// los dos períodos quedan reservados mientras la solicitud esté Pendiente.
+export async function solicitarReprogramacion(id, { fecha, diaSemana, hora }, estaDisponible) {
+  return transaccion(async (tx) => {
+    await tomarBloqueoAgenda(tx);
+    const { duracionMinutos } = await citaParaCambiar(id, tx);
+    const agenda = await leerAgendaDelDia(fecha, diaSemana, tx, id);
+    if (!estaDisponible(agenda, duracionMinutos)) throw new SinGuardar({ conflicto: true });
+    await tx.consulta(
+      `INSERT INTO dbo.SolicitudCita (CitaId, Tipo, FechaPropuesta, HoraPropuesta)
+       VALUES (@id, N'Reprogramacion', CAST(@fecha AS DATE), CAST(@hora AS TIME(0)))`,
+      { id, fecha, hora },
+    );
+    await tx.consulta("UPDATE dbo.Cita SET Estado = N'Pendiente' WHERE Id = @id", { id });
+    return { ok: true };
+  });
+}
+
+// MCA-03: registra la SolicitudCita de cancelación; la cita sigue Confirmada y su período reservado.
+export async function solicitarCancelacion(id) {
+  return transaccion(async (tx) => {
+    await citaParaCambiar(id, tx);
+    await tx.consulta("INSERT INTO dbo.SolicitudCita (CitaId, Tipo) VALUES (@id, N'Cancelacion')", { id });
+    return { ok: true };
+  });
+}
+
+// MCA-07: una cita Confirmada sin solicitud pendiente pasa a Completada. No crea ventas.
+export async function completarCita(id) {
+  return transaccion(async (tx) => {
+    await citaParaCambiar(id, tx);
+    await tx.consulta("UPDATE dbo.Cita SET Estado = N'Completada' WHERE Id = @id", { id });
     return { ok: true };
   });
 }

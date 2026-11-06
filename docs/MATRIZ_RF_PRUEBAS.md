@@ -60,20 +60,20 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 
 | Código | Requerimiento | Prioridad ERS | Jira RF | Jira CU | Fase | Estado | Prueba |
 |---|---|---|---|---|---|---|---|
-| MCA-01 | Crear cita (cliente) | Alta | SCRUM-11 | SCRUM-65 | P1 | pendiente | |
-| MCA-02 | Reprogramar cita (cliente) | Alta | SCRUM-12 | SCRUM-66 | P1 | pendiente | |
-| MCA-03 | Cancelar cita (cliente) | Alta | SCRUM-13 | SCRUM-67 | P1 | pendiente | |
+| MCA-01 | Crear cita (cliente) | Alta | SCRUM-11 | SCRUM-65 | P1 | integrado | Cliente sin cuenta, desde mañana; cita Pendiente con SolicitudCita de creación y período reservado; aviso interno. Punta a punta con SQL Server (CI). Programado por Ignacio a pedido (D-024). Falta probar en pantalla. |
+| MCA-02 | Reprogramar cita (cliente) | Alta | SCRUM-12 | SCRUM-66 | P1 | integrado | Con código y teléfono; cita pasa a Pendiente conservando su fecha; quedan reservados el período original y el propuesto. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MCA-03 | Cancelar cita (cliente) | Alta | SCRUM-13 | SCRUM-67 | P1 | integrado | Con código y teléfono y confirmación; la cita sigue Confirmada hasta procesarla. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
 | MCA-04 | Consultar citas | Alta | SCRUM-14 | SCRUM-68 | P0 | probado | Programado para la Integración 1 (D-019). Filtros por fecha, estado y cliente; detalle. Prueba de punta a punta con SQL Server en `npm run api:integracion` (CI). Probado en pantalla con SQL Server (6 nov). Falta revisión de Persona A. |
-| MCA-05 | Consultar solicitudes pendientes | Alta | SCRUM-15 | SCRUM-69 | P1 | pendiente | |
-| MCA-06 | Procesar solicitud pendiente | Alta | SCRUM-16 | SCRUM-70 | P1 | pendiente | |
-| MCA-07 | Marcar cita como completada | Alta | SCRUM-17 | SCRUM-71 | P1 | pendiente | |
-| MCA-08 | Registrar configuración de agenda | Media | SCRUM-18 | SCRUM-72 | P0 | integrado | Horario regular o bloqueo; rango válido; sin superposiciones; un bloqueo no tapa citas ni reservas. Pruebas de reglas y de punta a punta con SQL Server (CI). Programado por Ignacio a pedido (D-019, D-023). Falta probar en pantalla. |
-| MCA-09 | Consultar configuración de agenda | Media | SCRUM-19 | SCRUM-73 | P0 | integrado | Horarios y bloqueos por separado, con mensajes si no hay. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MCA-10 | Modificar configuración de agenda | Media | SCRUM-20 | SCRUM-74 | P0 | integrado | No deja fuera citas Confirmadas ni reservas Pendientes; la disponibilidad usa el cambio. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MCA-11 | Eliminar configuración de agenda | Media | SCRUM-21 | SCRUM-75 | P0 | integrado | Con confirmación; un horario no se elimina si deja fuera citas o reservas; el bloqueo solo retira la restricción. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MCA-05 | Consultar solicitudes pendientes | Alta | SCRUM-15 | SCRUM-69 | P1 | integrado | Solo Pendientes, con tipo, cliente, código y períodos (original y propuesto); aviso interno cada 20 segundos en el panel. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MCA-06 | Procesar solicitud pendiente | Alta | SCRUM-16 | SCRUM-70 | P1 | integrado | Aprobar o rechazar con confirmación; solicitud, cita y agenda en una transacción según la tabla del caso de uso. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MCA-07 | Marcar cita como completada | Alta | SCRUM-17 | SCRUM-71 | P1 | integrado | Solo Confirmadas sin solicitud pendiente, con confirmación; no crea ventas. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MCA-08 | Registrar configuración de agenda | Media | SCRUM-18 | SCRUM-72 | P0 | probado | Horario regular o bloqueo; rango válido; sin superposiciones; un bloqueo no tapa citas ni reservas. Pruebas de reglas y de punta a punta con SQL Server (CI). Programado por Ignacio a pedido (D-019, D-023). Probado en pantalla con SQL Server (6 nov). |
+| MCA-09 | Consultar configuración de agenda | Media | SCRUM-19 | SCRUM-73 | P0 | probado | Horarios y bloqueos por separado, con mensajes si no hay. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MCA-10 | Modificar configuración de agenda | Media | SCRUM-20 | SCRUM-74 | P0 | probado | No deja fuera citas Confirmadas ni reservas Pendientes; la disponibilidad usa el cambio. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MCA-11 | Eliminar configuración de agenda | Media | SCRUM-21 | SCRUM-75 | P0 | probado | Con confirmación; un horario no se elimina si deja fuera citas o reservas; el bloqueo solo retira la restricción. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
 | MCA-12 | Crear cita (Administrador) | Media | SCRUM-22 | SCRUM-76 | P0 | probado | Programado para la Integración 1 (D-019). Pruebas del algoritmo de disponibilidad y de punta a punta con SQL Server (horario ocupado, cliente nuevo y existente, domicilio, sin servicios). Probado en pantalla con SQL Server (6 nov). Falta revisión de Persona A. |
-| MCA-13 | Reprogramar cita (Administrador) | Media | SCRUM-23 | SCRUM-77 | P0 | integrado | Solo Confirmadas sin solicitud pendiente; mismos servicios; disponibilidad sin la propia cita y verificada otra vez con el bloqueo agenda. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| MCA-14 | Cancelar cita (Administrador) | Media | SCRUM-24 | SCRUM-78 | P0 | integrado | Motivo obligatorio y confirmación; queda Cancelada y libera el período. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
+| MCA-13 | Reprogramar cita (Administrador) | Media | SCRUM-23 | SCRUM-77 | P0 | probado | Solo Confirmadas sin solicitud pendiente; mismos servicios; disponibilidad sin la propia cita y verificada otra vez con el bloqueo agenda. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
+| MCA-14 | Cancelar cita (Administrador) | Media | SCRUM-24 | SCRUM-78 | P0 | probado | Motivo obligatorio y confirmación; queda Cancelada y libera el período. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
 
 ## Requerimientos no funcionales
 

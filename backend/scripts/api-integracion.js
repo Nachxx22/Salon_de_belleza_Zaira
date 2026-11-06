@@ -1,7 +1,8 @@
 // Pruebas de punta a punta contra SQL Server real: Integración 1 (acceso +
 // servicios + citas), paso 7 (proveedores y productos), paso 8 (ventas) y
 // paso 9 (EXT-MV-U01 corregir venta, extensión que no está en el ERS) y
-// hito P0 (configuración de agenda, reprogramar y cancelar citas).
+// hito P0 (configuración de agenda, reprogramar y cancelar citas) y los P1 de
+// citas (cliente, solicitudes y completar).
 // Uso: npm run api:integracion  (lee backend/.env; necesita db:migrar, db:semillas y db:admin)
 //
 // OJO: deja datos de prueba (un servicio, un cliente y citas). Úsenlo en una
@@ -502,6 +503,129 @@ try {
   revisar('una cita cancelada no se cancela otra vez (MCA-14, criterio 2)', () => assert.equal(r.cuerpo.codigo, 'CITA_NO_CONFIRMADA'));
   r = await llamar('PATCH', `/admin/citas/${cita1.id}/reprogramar`, { fecha, hora: '11:00' });
   revisar('ni se reprograma (MCA-13, criterio 2)', () => assert.equal(r.cuerpo.codigo, 'CITA_NO_CONFIRMADA'));
+
+  // 16. Citas del cliente (P1): MCA-01 a MCA-03, MCA-05 a MCA-07. En `fecha`
+  //     queda solo cita2 (16:00, 60 min, Confirmada). El servicio dura 60 min.
+  console.log('Citas del cliente y solicitudes (P1)');
+  const telCliente = `7${sufijo.padStart(7, '0')}`;
+  const acceso = (codigo) => ({ codigo, telefono: `${telCliente.slice(0, 4)}-${telCliente.slice(4)}` });
+  const solicitudDe = async (codigo) => (await llamar('GET', '/admin/solicitudes')).cuerpo.data.find((s) => s.cita.codigo === codigo);
+  const libres = async () => (await llamar('GET', ruta(servicio.id))).cuerpo.data.horarios;
+
+  r = await llamar('GET', `/publico/citas/disponibilidad?fecha=${hoyCostaRica()}&servicios=${servicio.id}`);
+  revisar('el cliente no puede pedir cita para hoy (MCA-01, criterio 4)', () => assert.equal(r.cuerpo.codigo, 'FECHA_NO_PERMITIDA'));
+  r = await llamar('GET', `/publico/citas/disponibilidad?fecha=${fecha}&servicios=${servicio.id}`);
+  revisar('ve las horas libres desde mañana (MCA-01, criterios 5 a 7)', () => assert.ok(r.cuerpo.data.horarios.includes('13:00')));
+
+  const citaCliente = (hora) => ({
+    cliente: { nombre: 'Clienta web', telefono: telCliente, correoElectronico: '' },
+    servicios: [servicio.id],
+    fecha,
+    hora,
+  });
+  r = await llamar('POST', '/publico/citas', citaCliente('13:00'));
+  revisar('la cita del cliente queda Pendiente con su solicitud de creación (MCA-01, criterios 12 a 14)', () => {
+    assert.equal(r.estado, 201, JSON.stringify(r.cuerpo));
+    assert.equal(r.cuerpo.data.estado, 'Pendiente');
+    assert.equal(r.cuerpo.data.solicitudPendiente, 'Creacion');
+    assert.equal('cliente' in r.cuerpo.data, false);
+  });
+  const codigoCliente = r.cuerpo.data.codigo;
+  const libresTrasPedir = await libres();
+  revisar('el período queda reservado mientras está pendiente (MCA-01, criterio 15)', () => assert.ok(!libresTrasPedir.includes('13:00')));
+  r = await llamar('GET', '/admin/solicitudes/resumen');
+  revisar('la administradora recibe el aviso interno (MCA-01 criterio 16, MCA-05 criterio 12)', () => assert.ok(r.cuerpo.data.pendientes >= 1));
+
+  r = await llamar('POST', '/publico/citas/consulta', { codigo: codigoCliente, telefono: '88880000' });
+  revisar('con un teléfono que no corresponde no muestra la cita (MCA-02, criterio 1)', () => {
+    assert.equal(r.estado, 404);
+    assert.equal(r.cuerpo.codigo, 'CITA_NO_ENCONTRADA');
+  });
+  r = await llamar('POST', '/publico/citas/cancelacion', acceso(codigoCliente));
+  revisar('una cita Pendiente no admite otra solicitud (MCA-03, criterio 2)', () => assert.equal(r.cuerpo.codigo, 'CITA_NO_CONFIRMADA'));
+
+  let solicitud = await solicitudDe(codigoCliente);
+  revisar('la solicitud aparece en pendientes con su tipo (MCA-05, criterios 2 a 6)', () => assert.equal(solicitud?.tipo, 'Creacion'));
+  r = await llamar('PATCH', `/admin/solicitudes/${solicitud.id}/aprobar`);
+  revisar('aprobar una creación confirma la cita (MCA-06, criterio 4)', () => {
+    assert.equal(r.estado, 200, JSON.stringify(r.cuerpo));
+    assert.equal(r.cuerpo.data.estado, 'Aprobada');
+    assert.equal(r.cuerpo.data.cita.estado, 'Confirmada');
+  });
+  r = await llamar('PATCH', `/admin/solicitudes/${solicitud.id}/rechazar`);
+  revisar('una solicitud procesada no se procesa otra vez (MCA-06, criterio 11)', () => assert.equal(r.cuerpo.codigo, 'SOLICITUD_YA_PROCESADA'));
+
+  // MCA-02: reprogramación del cliente
+  r = await llamar('POST', '/publico/citas/reprogramacion/horarios', { ...acceso(codigoCliente), fecha });
+  revisar('ve horas para reprogramar con la duración de sus servicios (MCA-02, criterio 7)', () => assert.ok(r.cuerpo.data.horarios.includes('14:00')));
+  r = await llamar('POST', '/publico/citas/reprogramacion', { ...acceso(codigoCliente), fecha, hora: '14:00' });
+  revisar('la reprogramación deja la cita Pendiente y conserva la fecha original (MCA-02, criterios 8 a 10)', () => {
+    assert.equal(r.cuerpo.data.estado, 'Pendiente');
+    assert.equal(r.cuerpo.data.hora, '13:00');
+    assert.equal(r.cuerpo.data.solicitudPendiente, 'Reprogramacion');
+  });
+  let horasLibres = await libres();
+  revisar('quedan reservados el período original y el propuesto (MCA-02, criterio 11)', () => {
+    assert.ok(!horasLibres.includes('13:00'));
+    assert.ok(!horasLibres.includes('14:00'));
+  });
+  solicitud = await solicitudDe(codigoCliente);
+  r = await llamar('PATCH', `/admin/solicitudes/${solicitud.id}/rechazar`);
+  horasLibres = await libres();
+  revisar('rechazarla devuelve la cita a Confirmada en su fecha y libera solo lo propuesto (MCA-06, criterio 7)', () => {
+    assert.equal(r.cuerpo.data.cita.estado, 'Confirmada');
+    assert.equal(r.cuerpo.data.cita.hora, '13:00');
+    assert.ok(horasLibres.includes('14:00'));
+    assert.ok(!horasLibres.includes('13:00'));
+  });
+  await llamar('POST', '/publico/citas/reprogramacion', { ...acceso(codigoCliente), fecha, hora: '14:00' });
+  solicitud = await solicitudDe(codigoCliente);
+  r = await llamar('PATCH', `/admin/solicitudes/${solicitud.id}/aprobar`);
+  horasLibres = await libres();
+  revisar('aprobarla aplica la nueva hora y libera la original (MCA-06, criterio 6)', () => {
+    assert.equal(r.cuerpo.data.cita.estado, 'Confirmada');
+    assert.equal(r.cuerpo.data.cita.hora, '14:00');
+    assert.ok(horasLibres.includes('13:00'));
+    assert.ok(!horasLibres.includes('14:00'));
+  });
+
+  // MCA-03: cancelación del cliente
+  r = await llamar('POST', '/publico/citas/cancelacion', acceso(codigoCliente));
+  revisar('solicitar la cancelación no cancela todavía (MCA-03, criterios 5 a 8)', () => {
+    assert.equal(r.cuerpo.data.estado, 'Confirmada');
+    assert.equal(r.cuerpo.data.solicitudPendiente, 'Cancelacion');
+  });
+  r = await llamar('POST', '/publico/citas/cancelacion', acceso(codigoCliente));
+  revisar('no se registra otra solicitud mientras hay una pendiente (MCA-03, criterio 3)', () => assert.equal(r.cuerpo.codigo, 'SOLICITUD_PENDIENTE'));
+  const idCitaCliente = (await solicitudDe(codigoCliente)).cita.id;
+  r = await llamar('PATCH', `/admin/citas/${idCitaCliente}/completar`);
+  revisar('la administradora no puede completarla con una solicitud pendiente (MCA-07, criterio 8)', () => assert.equal(r.cuerpo.codigo, 'SOLICITUD_PENDIENTE'));
+  solicitud = await solicitudDe(codigoCliente);
+  r = await llamar('PATCH', `/admin/solicitudes/${solicitud.id}/rechazar`);
+  revisar('rechazar la cancelación deja la cita Confirmada (MCA-06, criterio 9)', () => assert.equal(r.cuerpo.data.cita.estado, 'Confirmada'));
+  await llamar('POST', '/publico/citas/cancelacion', acceso(codigoCliente));
+  solicitud = await solicitudDe(codigoCliente);
+  r = await llamar('PATCH', `/admin/solicitudes/${solicitud.id}/aprobar`);
+  horasLibres = await libres();
+  revisar('aprobarla cancela la cita y libera su período (MCA-06, criterio 8)', () => {
+    assert.equal(r.cuerpo.data.cita.estado, 'Cancelada');
+    assert.ok(horasLibres.includes('14:00'));
+  });
+
+  r = await llamar('POST', '/publico/citas', citaCliente('13:00'));
+  solicitud = await solicitudDe(r.cuerpo.data.codigo);
+  r = await llamar('PATCH', `/admin/solicitudes/${solicitud.id}/rechazar`);
+  horasLibres = await libres();
+  revisar('rechazar una creación cancela la cita y libera el horario (MCA-06, criterio 5)', () => {
+    assert.equal(r.cuerpo.data.cita.estado, 'Cancelada');
+    assert.ok(horasLibres.includes('13:00'));
+  });
+
+  // MCA-07
+  r = await llamar('PATCH', `/admin/citas/${cita2.id}/completar`);
+  revisar('una cita Confirmada se marca como Completada (MCA-07, criterios 1 y 4)', () => assert.equal(r.cuerpo.data.estado, 'Completada'));
+  r = await llamar('PATCH', `/admin/citas/${cita2.id}/completar`);
+  revisar('una cita Completada no se completa otra vez (MCA-07, criterio 3)', () => assert.equal(r.cuerpo.codigo, 'CITA_NO_CONFIRMADA'));
 
   r = await llamar('POST', '/auth/logout');
   revisar('la administradora cierra sesión (MA-02)', () => assert.equal(r.estado, 200));

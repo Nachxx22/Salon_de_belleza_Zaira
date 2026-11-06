@@ -10,13 +10,15 @@
 //   PATCH  /api/admin/citas/:id/reprogramar    MCA-13 reprogramar cita (administradora)
 //   PATCH  /api/admin/citas/:id/cancelar       MCA-14 cancelar cita (administradora)
 //
-// Propuestas, pendientes (confirmarlas en docs/CONTRATOS_API.md antes de programarlas):
-//   PATCH  /api/admin/citas/:id/completar     MCA-07 marcar cita como completada
-//   GET    /api/publico/citas/disponibilidad  Horarios disponibles para el cliente (con anticipación mínima)
-//   POST   /api/publico/citas                 MCA-01 crear cita (cliente), queda Pendiente
-//   POST   /api/publico/citas/consulta        Buscar la cita con código y teléfono
-//   POST   /api/publico/citas/reprogramacion  MCA-02 solicitar reprogramación (código y teléfono)
-//   POST   /api/publico/citas/cancelacion     MCA-03 solicitar cancelación (código y teléfono)
+//   PATCH  /api/admin/citas/:id/completar      MCA-07 marcar cita como completada
+//
+// Públicas (sin sesión; el teléfono va en el cuerpo, nunca en la URL):
+//   GET    /api/publico/citas/disponibilidad          MCA-01 horas libres desde mañana (?fecha=&servicios=1,2)
+//   POST   /api/publico/citas                         MCA-01 crear cita (cliente), queda Pendiente
+//   POST   /api/publico/citas/consulta                Ver la cita con código y teléfono
+//   POST   /api/publico/citas/reprogramacion/horarios MCA-02 horas libres para reprogramar
+//   POST   /api/publico/citas/reprogramacion          MCA-02 solicitar reprogramación
+//   POST   /api/publico/citas/cancelacion             MCA-03 solicitar cancelación
 //
 // Capas: este archivo recibe la solicitud y responde; las reglas están en
 // citas.logica.js y el SQL en citas.datos.js (D-017).
@@ -67,4 +69,40 @@ rutasAdmin.patch('/:id/reprogramar', async (req, res) => {
 rutasAdmin.patch('/:id/cancelar', async (req, res) => {
   const cita = await logica.cancelar(idDeRuta(req.params.id), req.body);
   responderOk(res, cita, { mensaje: `Cita ${cita.codigo} cancelada. El período quedó libre.` });
+});
+
+rutasAdmin.patch('/:id/completar', async (req, res) => {
+  const cita = await logica.completar(idDeRuta(req.params.id));
+  responderOk(res, cita, { mensaje: `Cita ${cita.codigo} marcada como Completada.` });
+});
+
+// ----- Públicas: MCA-01, MCA-02 y MCA-03 -----
+rutasPublicas.get('/disponibilidad', async (req, res) => {
+  responderOk(res, await logica.disponibilidadPublica({ fecha: req.query.fecha, servicios: req.query.servicios }));
+});
+
+rutasPublicas.post('/', async (req, res) => {
+  const { cita } = await logica.crearCitaCliente(req.body);
+  const vista = await logica.consultarCitaCliente({ codigo: cita.codigo, telefono: cita.cliente.telefono });
+  responderCreado(res, vista, `Su solicitud de cita fue registrada con el código ${cita.codigo} y está pendiente de aprobación.`);
+});
+
+rutasPublicas.post('/consulta', async (req, res) => {
+  responderOk(res, await logica.consultarCitaCliente(req.body));
+});
+
+rutasPublicas.post('/reprogramacion/horarios', async (req, res) => {
+  responderOk(res, await logica.disponibilidadReprogramacionCliente(req.body));
+});
+
+rutasPublicas.post('/reprogramacion', async (req, res) => {
+  responderOk(res, await logica.solicitarReprogramacionCliente(req.body), {
+    mensaje: 'Su solicitud de reprogramación fue registrada y está pendiente de aprobación. Su cita conserva la fecha original mientras tanto.',
+  });
+});
+
+rutasPublicas.post('/cancelacion', async (req, res) => {
+  responderOk(res, await logica.solicitarCancelacionCliente(req.body), {
+    mensaje: 'Su solicitud de cancelación fue registrada y está pendiente de aprobación. Su cita sigue confirmada mientras tanto.',
+  });
 });

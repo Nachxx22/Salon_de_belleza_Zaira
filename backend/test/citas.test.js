@@ -86,3 +86,23 @@ test('el código de la cita es corto, sin caracteres confusos y distinto cada ve
   assert.equal(codigos.size, 500);
   for (const codigo of codigos) assert.match(codigo, /^C-[A-HJ-NP-Z2-9]{8}$/);
 });
+
+test('el cliente solo puede elegir desde el día siguiente (CU-MCA-01, criterios 4 y 5)', async () => {
+  const { opcionesCliente } = await import('../src/modules/citas/citas.logica.js');
+  // 6 nov 2026 a las 22:00 en Costa Rica (7 nov 04:00 UTC).
+  const ahora = new Date('2026-11-07T04:00:00Z');
+  assert.equal(codigoError(() => opcionesCliente('2026-11-06', ahora)), 'FECHA_NO_PERMITIDA');
+  assert.equal(codigoError(() => opcionesCliente('2026-11-05', ahora)), 'FECHA_NO_PERMITIDA');
+  assert.deepEqual(opcionesCliente('2026-11-07', ahora), { desdeMinuto: 0 });
+});
+
+test('cada tipo de solicitud exige su estado de cita (CU-MCA-06, restricciones 5 a 7)', async () => {
+  const { estadoCitaEsperado, estaDisponible } = await import('../src/modules/solicitudes/solicitudes.logica.js');
+  assert.equal(estadoCitaEsperado('Creacion'), 'Pendiente');
+  assert.equal(estadoCitaEsperado('Reprogramacion'), 'Pendiente');
+  assert.equal(estadoCitaEsperado('Cancelacion'), 'Confirmada');
+  // Al aprobar, el período debe seguir dentro del horario y libre.
+  assert.equal(estaDisponible(agendaVacia, '10:00', 60), true);
+  assert.equal(estaDisponible(agendaVacia, '11:30', 60), false);
+  assert.equal(estaDisponible({ ...agendaVacia, bloqueos: [{ inicio: '10:00', fin: '10:30' }] }, '10:00', 30), false);
+});

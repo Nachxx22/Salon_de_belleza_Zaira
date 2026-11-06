@@ -93,6 +93,14 @@ function opcionesDeFecha(fecha, ahora = new Date()) {
   return { desdeMinuto: aMinutos(horaActual) + 1 };
 }
 
+// El cliente solo puede elegir desde el día calendario siguiente (MCA-01 y MCA-02, anticipación mínima).
+export function opcionesCliente(fecha, ahora = new Date()) {
+  if (fecha <= hoyCostaRica(ahora)) {
+    throw new ErrorApp(400, 'FECHA_NO_PERMITIDA', 'Seleccione una fecha a partir de mañana: las citas se solicitan con un día de anticipación.', { campo: 'fecha' });
+  }
+  return { desdeMinuto: 0 };
+}
+
 // ---------------------------------------------------------------------------
 // Servicios de la cita
 // ---------------------------------------------------------------------------
@@ -157,8 +165,18 @@ export async function buscarCliente(valorTelefono) {
 }
 
 // MCA-12 Crear cita (Administrador): queda Confirmada y no genera SolicitudCita.
-export async function crearCitaAdmin(entrada = {}, ahora = new Date()) {
-  // MCA-12, restricción 12: nombre y teléfono obligatorios; correo opcional.
+// MCA-12 (administradora): Confirmada, sin solicitud, desde hoy.
+export function crearCitaAdmin(entrada = {}, ahora = new Date()) {
+  return registrarCitaNueva(entrada, ahora, { estado: 'Confirmada', conSolicitudCreacion: false, opcionesDe: opcionesDeFecha });
+}
+
+// MCA-01 (cliente): Pendiente, con SolicitudCita de creación, desde mañana.
+export function crearCitaCliente(entrada = {}, ahora = new Date()) {
+  return registrarCitaNueva(entrada, ahora, { estado: 'Pendiente', conSolicitudCreacion: true, opcionesDe: opcionesCliente });
+}
+
+async function registrarCitaNueva(entrada, ahora, { estado, conSolicitudCreacion, opcionesDe }) {
+  // MCA-12 restricción 12 y MCA-01 restricción 11: nombre y teléfono obligatorios; correo opcional.
   const datosCliente = entrada.cliente ?? {};
   const correoEscrito = textoOpcional(datosCliente.correoElectronico, 'correo electrónico', { max: 254 });
   const cliente = {
@@ -170,7 +188,7 @@ export async function crearCitaAdmin(entrada = {}, ahora = new Date()) {
   const ids = validarIdsServicios(entrada.servicios);
   const fecha = validarFecha(entrada.fecha);
   const hora = validarHoraInicio(entrada.hora);
-  const opciones = opcionesDeFecha(fecha, ahora);
+  const opciones = opcionesDe(fecha, ahora);
 
   const esDomicilio = entrada.esDomicilio ?? false;
   if (typeof esDomicilio !== 'boolean') {
@@ -198,7 +216,8 @@ export async function crearCitaAdmin(entrada = {}, ahora = new Date()) {
       fecha,
       diaSemana: diaSemana(fecha),
       hora,
-      estado: 'Confirmada',
+      estado,
+      conSolicitudCreacion,
       esDomicilio,
       direccion,
       observaciones,
@@ -304,4 +323,110 @@ export async function cancelar(id, entrada = {}) {
   const error = errorDeCambio(resultado, 'cancelar');
   if (error) throw error;
   return detalle(id);
+}
+
+// MCA-07 Marcar cita como completada: solo Confirmadas sin solicitud pendiente. No crea ventas.
+export async function completar(id) {
+  const resultado = await datos.completarCita(id);
+  const error = errorDeCambio(resultado, 'completar');
+  if (error) throw error;
+  return detalle(id);
+}
+
+// ---------------------------------------------------------------------------
+// Funciones públicas del cliente: MCA-01, MCA-02 y MCA-03 (sin cuenta)
+// ---------------------------------------------------------------------------
+
+// Horas libres para una cita nueva del cliente (desde mañana).
+export async function disponibilidadPublica({ fecha: valorFecha, servicios }, ahora = new Date()) {
+  const dia = validarFecha(valorFecha);
+  const ids = validarIdsServicios(servicios);
+  const opciones = opcionesCliente(dia, ahora);
+  const { duracionTotal } = await serviciosActivos(ids);
+  const agenda = await datos.leerAgendaDelDia(dia, diaSemana(dia));
+  return { fecha: dia, duracionTotalMinutos: duracionTotal, horarios: horariosDisponibles(agenda, duracionTotal, opciones) };
+}
+
+// Lo que ve el cliente de su cita: sin datos internos ni de contacto.
+function vistaCliente(cita, tipoPendiente) {
+  return {
+    codigo: cita.codigo,
+    fecha: cita.fecha,
+    hora: cita.hora,
+    horaFin: cita.horaFin,
+    duracionMinutos: cita.duracionMinutos,
+    estado: cita.estado,
+    esDomicilio: cita.esDomicilio,
+    servicios: cita.servicios.map((s) => ({ nombre: s.nombre, duracionMinutos: s.duracionAplicadaMinutos })),
+    solicitudPendiente: tipoPendiente, // 'Creacion', 'Reprogramacion', 'Cancelacion' o null
+    puedeSolicitarCambios: cita.estado === 'Confirmada' && !tipoPendiente,
+  };
+}
+
+// Código y teléfono deben corresponder a la misma cita; el mensaje no dice cuál falla (MCA-02 y MCA-03).
+async function citaDelCliente(entrada = {}) {
+  const codigo = textoRequerido(entrada.codigo, 'código de cita', { max: 30 }).toUpperCase();
+  const tel = telefono(entrada.telefono);
+  const id = await datos.idPorCodigoYTelefono(codigo, tel);
+  if (!id) {
+    throw new ErrorApp(404, 'CITA_NO_ENCONTRADA', 'No se encontró una cita con ese código y ese teléfono. Revise los datos.');
+  }
+  return id;
+}
+
+function errorCliente(resultado, accion) {
+  if (resultado.noConfirmada) {
+    return new ErrorApp(409, 'CITA_NO_CONFIRMADA', `La cita no se encuentra en un estado válido para solicitar su ${accion}.`);
+  }
+  if (resultado.solicitudPendiente) {
+    return new ErrorApp(409, 'SOLICITUD_PENDIENTE', 'Ya existe una solicitud en proceso para esta cita. Espere a que sea resuelta.');
+  }
+  if (resultado.noExiste) return errores.noEncontrado('No existe la cita solicitada.');
+  return null;
+}
+
+export async function consultarCitaCliente(entrada) {
+  const id = await citaDelCliente(entrada);
+  return vistaCliente(await detalle(id), await datos.tipoSolicitudPendiente(id));
+}
+
+// MCA-02 pasos 7-11: horas libres para la nueva fecha (desde mañana), con la duración de sus servicios.
+export async function disponibilidadReprogramacionCliente(entrada = {}, ahora = new Date()) {
+  const id = await citaDelCliente(entrada);
+  const cita = await detalle(id);
+  const tipoPendiente = await datos.tipoSolicitudPendiente(id);
+  const error = errorCliente({ noConfirmada: cita.estado !== 'Confirmada', solicitudPendiente: Boolean(tipoPendiente) }, 'reprogramación');
+  if (error) throw error;
+  const dia = validarFecha(entrada.fecha);
+  const opciones = opcionesCliente(dia, ahora);
+  const agenda = await datos.leerAgendaDelDia(dia, diaSemana(dia), null, id);
+  return { fecha: dia, duracionTotalMinutos: cita.duracionMinutos, horarios: horariosDisponibles(agenda, cita.duracionMinutos, opciones) };
+}
+
+// MCA-02: la cita pasa a Pendiente y la fecha propuesta queda en la solicitud.
+export async function solicitarReprogramacionCliente(entrada = {}, ahora = new Date()) {
+  const id = await citaDelCliente(entrada);
+  const fechaNueva = validarFecha(entrada.fecha);
+  const hora = validarHoraInicio(entrada.hora);
+  const opciones = opcionesCliente(fechaNueva, ahora);
+  const resultado = await datos.solicitarReprogramacion(
+    id,
+    { fecha: fechaNueva, diaSemana: diaSemana(fechaNueva), hora },
+    (agenda, duracion) => horariosDisponibles(agenda, duracion, opciones).includes(hora),
+  );
+  const error = errorCliente(resultado, 'reprogramación');
+  if (error) throw error;
+  if (resultado.conflicto) {
+    throw new ErrorApp(409, 'HORARIO_OCUPADO', 'El horario seleccionado ya no está disponible. Seleccione otro horario.', { campo: 'hora' });
+  }
+  return vistaCliente(await detalle(id), 'Reprogramacion');
+}
+
+// MCA-03: la cita sigue Confirmada hasta que la administradora procese la solicitud.
+export async function solicitarCancelacionCliente(entrada = {}) {
+  const id = await citaDelCliente(entrada);
+  const resultado = await datos.solicitarCancelacion(id);
+  const error = errorCliente(resultado, 'cancelación');
+  if (error) throw error;
+  return vistaCliente(await detalle(id), 'Cancelacion');
 }

@@ -1,5 +1,5 @@
 // MCA-04 Consultar citas y MCA-12 Crear cita (Administrador) — responsable: Persona A.
-// También MCA-13 Reprogramar y MCA-14 Cancelar (Administrador). Pendiente: MCA-07 completar.
+// También MCA-13 Reprogramar, MCA-14 Cancelar (Administrador) y MCA-07 Marcar como completada.
 import { useEffect, useState } from 'react';
 import { api } from '../../shared/api/cliente.js';
 import { Boton, Campo, Mensaje } from '../../shared/ui/componentes.jsx';
@@ -11,7 +11,7 @@ const FILTROS_VACIOS = { fecha: '', estado: '', cliente: '' };
 // MCA-04 detalle, MCA-13 Reprogramar y MCA-14 Cancelar (Administrador).
 // Solo citas Confirmadas sin una solicitud pendiente; si la hay, primero se procesa (MCA-06).
 function DetalleCita({ cita, alCambiar, alCerrar }) {
-  const [accion, setAccion] = useState(null); // null | 'reprogramar' | 'cancelar' | 'confirmarCancelacion'
+  const [accion, setAccion] = useState(null); // null | 'reprogramar' | 'cancelar' | 'confirmarCancelacion' | 'completar'
   const [fecha, setFecha] = useState('');
   const [disponibilidad, setDisponibilidad] = useState(null);
   const [hora, setHora] = useState('');
@@ -65,6 +65,23 @@ function DetalleCita({ cita, alCambiar, alCerrar }) {
     }
   }
 
+  // MCA-07: con confirmación; no crea una venta.
+  async function completar() {
+    setError('');
+    setEnviando(true);
+    try {
+      const actualizada = await api.patch(`/admin/citas/${cita.id}/completar`);
+      cerrarAccion();
+      setExito('Cita marcada como Completada. Sigue en el historial.');
+      alCambiar(actualizada);
+    } catch (e) {
+      setError(e.message);
+      setAccion(null);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   async function cancelar() {
     setError('');
     setEnviando(true);
@@ -112,13 +129,22 @@ function DetalleCita({ cita, alCambiar, alCerrar }) {
       {cita.motivoCancelacion && <p><strong>Motivo de cancelación:</strong> {cita.motivoCancelacion}</p>}
 
       {cita.estado === 'Confirmada' && cita.tieneSolicitudPendiente && accion === null && (
-        <p className="texto-suave">Para reprogramar o cancelar, primero procese la solicitud pendiente de esta cita.</p>
+        <p className="texto-suave">Para reprogramar, cancelar o completar, primero procese la solicitud pendiente de esta cita en «Solicitudes».</p>
       )}
 
       {cambiable && accion === null && (
         <p>
           <Boton variante="secundario" onClick={() => { setExito(''); setAccion('reprogramar'); }}>Reprogramar</Boton>{' '}
-          <Boton variante="peligro" onClick={() => { setExito(''); setAccion('cancelar'); }}>Cancelar cita</Boton>
+          <Boton variante="peligro" onClick={() => { setExito(''); setAccion('cancelar'); }}>Cancelar cita</Boton>{' '}
+          <Boton onClick={() => { setExito(''); setAccion('completar'); }}>Marcar como completada</Boton>
+        </p>
+      )}
+
+      {accion === 'completar' && (
+        <p>
+          ¿Marcar la cita {cita.codigo} como Completada? Ya no podrá reprogramarse ni cancelarse. No registra una venta.{' '}
+          <Boton onClick={completar} disabled={enviando}>Sí, completar</Boton>{' '}
+          <Boton variante="secundario" onClick={cerrarAccion} disabled={enviando}>No</Boton>
         </p>
       )}
 

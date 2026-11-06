@@ -104,7 +104,7 @@ Forma de un servicio en las respuestas:
 - Un servicio `Desactivado` no se ofrece para citas nuevas, pero sigue apareciendo en citas y ventas anteriores.
 - No se renombran ni eliminan estos campos sin acuerdo de los dos.
 
-## Citas (MCA-04, MCA-12, MCA-13 y MCA-14) — Persona A
+## Citas (MCA-01 a MCA-04, MCA-07, MCA-12 a MCA-14) — Persona A
 
 Programado por Ignacio a pedido del equipo para la Integración 1 (D-019); el módulo sigue siendo de Persona A.
 
@@ -118,6 +118,13 @@ Programado por Ignacio a pedido del equipo para la Integración 1 (D-019); el m�
 | GET | `/api/admin/citas/:id/disponibilidad` | MCA-13 | `?fecha=YYYY-MM-DD` | `200 { fecha, duracionTotalMinutos, horarios }` sin contar la propia cita |
 | PATCH | `/api/admin/citas/:id/reprogramar` | MCA-13 | `{ fecha, hora }` | `200 detalle`; sigue `Confirmada`, mismos servicios |
 | PATCH | `/api/admin/citas/:id/cancelar` | MCA-14 | `{ motivo }` (obligatorio, hasta 500) | `200 detalle`, estado `Cancelada` |
+| PATCH | `/api/admin/citas/:id/completar` | MCA-07 | — | `200 detalle`, estado `Completada`; no crea ventas |
+| GET | `/api/publico/citas/disponibilidad` | MCA-01 | `?fecha=YYYY-MM-DD&servicios=1,2` (desde mañana) | `200 { fecha, duracionTotalMinutos, horarios }` |
+| POST | `/api/publico/citas` | MCA-01 | igual que `POST /api/admin/citas` (sin `estado`) | `201 vista del cliente`, estado `Pendiente`, con `SolicitudCita` de creación |
+| POST | `/api/publico/citas/consulta` | MCA-02, MCA-03 | `{ codigo, telefono }` | `200 vista del cliente`; `404 CITA_NO_ENCONTRADA` sin decir qué dato falla |
+| POST | `/api/publico/citas/reprogramacion/horarios` | MCA-02 | `{ codigo, telefono, fecha }` | `200 { fecha, duracionTotalMinutos, horarios }` |
+| POST | `/api/publico/citas/reprogramacion` | MCA-02 | `{ codigo, telefono, fecha, hora }` | `200 vista del cliente`; la cita pasa a `Pendiente` y conserva su fecha |
+| POST | `/api/publico/citas/cancelacion` | MCA-03 | `{ codigo, telefono }` | `200 vista del cliente`; la cita sigue `Confirmada` |
 
 Cuerpo de `POST /api/admin/citas`:
 
@@ -137,7 +144,23 @@ Cuerpo de `POST /api/admin/citas`:
 - Resumen (listado): `{ id, codigo, fecha, hora, horaFin, duracionMinutos, estado, esDomicilio, cliente: { nombre, telefono }, servicios: "Corte, Tinte" }`.
 - Detalle: `{ id, codigo, fecha, hora, horaFin, duracionMinutos, estado, esDomicilio, direccion, observaciones, motivoCancelacion, tieneSolicitudPendiente, cliente: { id, nombre, telefono, correoElectronico }, servicios: [{ id, nombre, estado, duracionAplicadaMinutos }] }`.
 - Códigos de negocio: `409 HORARIO_OCUPADO` («El horario seleccionado ya no está disponible. Seleccione otro horario.»), `409 SERVICIO_NO_DISPONIBLE`, `409 DOMICILIO_NO_DISPONIBLE`, `400 FECHA_PASADA`, `409 CITA_NO_CONFIRMADA` (reprogramar o cancelar una cita que no está Confirmada), `409 SOLICITUD_PENDIENTE` (primero se procesa la solicitud con MCA-06).
+- Vista del cliente (rutas públicas): `{ codigo, fecha, hora, horaFin, duracionMinutos, estado, esDomicilio, servicios: [{ nombre, duracionMinutos }], solicitudPendiente: "Creacion" | "Reprogramacion" | "Cancelacion" | null, puedeSolicitarCambios }`. No incluye datos del cliente ni dirección. El teléfono siempre va en el cuerpo, nunca en la URL.
+- El cliente elige fechas desde el día siguiente (`400 FECHA_NO_PERMITIDA`). Con una solicitud pendiente no puede registrar otra (`409 SOLICITUD_PENDIENTE`).
 - La disponibilidad se calcula con un solo algoritmo en el servidor (`horariosDisponibles` en `citas.logica.js`): horas cada 30 minutos dentro del horario regular, donde cabe la duración total, sin chocar con bloqueos, citas `Pendiente` o `Confirmada` ni reprogramaciones `Pendiente`. Al registrar se vuelve a verificar con el bloqueo `agenda` tomado (D-016).
+
+## Solicitudes de cita (MCA-05 y MCA-06) — Persona A
+
+| Método | Ruta | Requerimiento | Respuesta |
+|---|---|---|---|
+| GET | `/api/admin/solicitudes` | MCA-05 | `200 [solicitud]`, solo `Pendiente`, de la más antigua a la más reciente |
+| GET | `/api/admin/solicitudes/resumen` | MCA-05 (aviso interno) | `200 { pendientes, ultimaId }`; el panel lo consulta cada 20 segundos |
+| GET | `/api/admin/solicitudes/:id` | MCA-05 | `200 solicitud` |
+| PATCH | `/api/admin/solicitudes/:id/aprobar` | MCA-06 | `200 solicitud` ya `Aprobada`, con la cita actualizada |
+| PATCH | `/api/admin/solicitudes/:id/rechazar` | MCA-06 | `200 solicitud` ya `Rechazada`, con la cita actualizada |
+
+- Solicitud: `{ id, tipo, estado, fechaSolicitud, propuesta: { fecha, hora } | null, cita: { id, codigo, fecha, hora, estado, duracionMinutos, servicios, esDomicilio, direccion, observaciones }, cliente: { nombre, telefono, correoElectronico } }`.
+- Resultado según la tabla de CU-MCA-06: creación aprobada → cita `Confirmada`, rechazada → `Cancelada`; reprogramación aprobada → nueva fecha y `Confirmada`, rechazada → `Confirmada` con la fecha original; cancelación aprobada → `Cancelada` (sin motivo), rechazada → sigue `Confirmada`.
+- Errores: `409 SOLICITUD_YA_PROCESADA`, `409 SOLICITUD_INCONSISTENTE` (la cita no está en el estado que corresponde al tipo), `409 CONFLICTO_AGENDA` (el período ya no es válido al aprobar). Todo en una transacción con el bloqueo `agenda`.
 
 ## Configuración de agenda (MCA-08 a MCA-11) — Persona A
 
@@ -220,4 +243,3 @@ Cuerpo de `POST /api/admin/ventas`:
 
 Cada responsable completa la tabla de rutas de su módulo antes de programarlo. Las rutas propuestas están en el comentario inicial de cada archivo `backend/src/modules/<modulo>/<modulo>.rutas.js`.
 
-- **Citas, Agenda, Solicitudes** (Persona A). La disponibilidad se calcula con un solo algoritmo en el servidor; React no decide si un horario es válido.

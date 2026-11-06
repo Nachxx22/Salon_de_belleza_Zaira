@@ -2,6 +2,7 @@
 import { NavLink, Outlet, Link, useNavigate } from 'react-router';
 import { useAuth } from '../../features/auth/AuthContext.jsx';
 import { Boton } from './componentes.jsx';
+import AvisoSolicitudes from '../../features/solicitudes/AvisoSolicitudes.jsx';
 
 export function LayoutPublico() {
   return (
@@ -70,6 +71,7 @@ export function LayoutAdmin() {
         </div>
       </aside>
       <main id="contenido" className="panel__contenido">
+        <AvisoSolicitudes />
         <Outlet />
       </main>
     </div>

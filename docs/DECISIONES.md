@@ -149,3 +149,13 @@ Otras decisiones del paso 7: el catálogo público de productos no muestra stock
 - **Eliminar:** una configuración de agenda no es historial, así que MCA-11 elimina el registro. Ninguna operación de agenda cambia citas ni solicitudes.
 - **Reprogramar:** la disponibilidad excluye la propia cita (puede moverse dentro de su mismo horario) y se verifica otra vez dentro de la transacción con el bloqueo `agenda`. La cita conserva servicios, duración aplicada y código.
 - **Bloqueo `agenda`:** `tomarBloqueoAgenda` quedó en `agenda.datos.js` y lo usan Agenda y Citas (D-016).
+
+## D-024 — Citas del cliente, solicitudes y completar (P1) (6 nov 2026)
+
+- **Quién:** igual que en D-019 y D-023, Ignacio programó a pedido del equipo MCA-01 a MCA-03, MCA-05 a MCA-07 y las pantallas públicas «Solicitar cita» y «Mi cita», en los módulos de Persona A. Ella los revisa.
+- **Anticipación mínima:** el cliente elige desde el día calendario siguiente (fecha mayor que hoy en hora de Costa Rica). La administradora no tiene esta regla (MCA-12, MCA-13).
+- **Privacidad (Ley 8968, AC-03):** las rutas públicas reciben el teléfono en el cuerpo de la solicitud, nunca en la URL, y devuelven solo la vista del cliente (código, fecha, hora, servicios, estado), sin datos de contacto ni dirección. Si el código y el teléfono no coinciden, el mensaje no dice cuál de los dos falla.
+- **Reprogramación del cliente:** el período propuesto no choca con la propia cita (puede moverla dentro de su horario). Mientras está Pendiente quedan reservados el original (cita Pendiente) y el propuesto (`SolicitudCita.FechaPropuesta`).
+- **Procesar (MCA-06):** una sola transacción con el bloqueo `agenda` actualiza solicitud y cita según la tabla del caso de uso. Al aprobar una creación o reprogramación se verifica otra vez que el período siga dentro del horario y libre (`CONFLICTO_AGENDA`). Una cancelación aprobada deja `MotivoCancelacion` vacío porque no la decidió la administradora (MCA-14).
+- **Aviso interno (MCA-05, criterios 12 y 13):** el panel consulta `GET /api/admin/solicitudes/resumen` cada 20 segundos y muestra un aviso cuando llega una solicitud nueva (y al entrar, si hay pendientes). No usa WhatsApp ni correo. La solicitud sigue en «Solicitudes» aunque se cierre el aviso.
+- **Completar (MCA-07):** solo citas Confirmadas sin solicitud pendiente; no registra ventas ni pagos.
