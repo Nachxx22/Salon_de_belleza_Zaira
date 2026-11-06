@@ -70,6 +70,17 @@ La sesión dura 8 horas de inactividad y se guarda en memoria del servidor: si e
 
 ## Servicio (urgente: lo consume Citas) — Persona B
 
+| Método | Ruta | Grupo | Requerimiento | Cuerpo | Respuesta |
+|---|---|---|---|---|---|
+| GET | `/api/publico/servicios` | público | MS-02 | — | `200 [servicio]`, solo `Activo` |
+| GET | `/api/admin/servicios` | admin | MS-05 | — | `200 [servicio]`, activos y desactivados |
+| GET | `/api/admin/servicios/:id` | admin | MS-05 | — | `200 servicio`; `404 NO_ENCONTRADO` |
+| POST | `/api/admin/servicios` | admin | MS-01 | `{ nombre, descripcion, precioAproximado, duracionMinutos, permiteDomicilio }` | `201 servicio` (queda `Activo`) |
+| PUT | `/api/admin/servicios/:id` | admin | MS-03 | igual que POST; no cambia el estado | `200 servicio` |
+| PATCH | `/api/admin/servicios/:id/desactivar` | admin | MS-04 | — | `200 servicio`; si ya estaba desactivado, responde igual con el mensaje «El servicio ya estaba desactivado.» |
+
+Errores de validación: `400 DATOS_INVALIDOS`. Cuando faltan datos, el mensaje los enumera (por ejemplo «Faltan datos obligatorios: nombre, descripción.») y `detalles.campo` indica el primero. Reglas: nombre hasta 100 caracteres; descripción hasta 500; precio aproximado ≥ 0; duración entero mayor que cero; `permiteDomicilio` opcional, `false` por defecto.
+
 Forma de un servicio en las respuestas:
 
 ```json

@@ -18,11 +18,11 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 
 | Código | Requerimiento | Prioridad ERS | Jira RF | Jira CU | Fase | Estado | Prueba |
 |---|---|---|---|---|---|---|---|
-| MS-01 | Registrar servicio | Alta | SCRUM-39 | SCRUM-93 | P0 | pendiente | |
-| MS-02 | Consultar servicio (Cliente) | Alta | SCRUM-40 | SCRUM-94 | P0 | pendiente | |
-| MS-03 | Actualizar servicio | Alta | SCRUM-41 | SCRUM-95 | P0 | pendiente | |
-| MS-04 | Desactivar servicio | Media | SCRUM-42 | SCRUM-96 | P0 | pendiente | |
-| MS-05 | Consultar servicios (Administrador) | Alta | SCRUM-43 | SCRUM-97 | P0 | pendiente | |
+| MS-01 | Registrar servicio | Alta | SCRUM-39 | SCRUM-93 | P0 | integrado | Pruebas automáticas de las reglas de validación (criterios 1 a 5 y 8). Falta probar contra SQL Server con la pantalla. |
+| MS-02 | Consultar servicio (Cliente) | Alta | SCRUM-40 | SCRUM-94 | P0 | integrado | Ruta pública y catálogo; solo servicios activos. Falta probar con datos reales de SQL Server. |
+| MS-03 | Actualizar servicio | Alta | SCRUM-41 | SCRUM-95 | P0 | integrado | Pruebas automáticas de validación. Falta probar contra SQL Server (criterio 3: citas existentes no cambian). |
+| MS-04 | Desactivar servicio | Media | SCRUM-42 | SCRUM-96 | P0 | integrado | Baja lógica con confirmación en pantalla. Falta probar contra SQL Server. |
+| MS-05 | Consultar servicios (Administrador) | Alta | SCRUM-43 | SCRUM-97 | P0 | integrado | Listado administrativo con activos y desactivados. Falta probar contra SQL Server. |
 
 ## Proveedores — Persona B (Ignacio)
 
