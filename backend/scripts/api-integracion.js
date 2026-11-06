@@ -1,5 +1,6 @@
 // Pruebas de punta a punta contra SQL Server real: Integración 1 (acceso +
-// servicios + citas), paso 7 (proveedores y productos) y paso 8 (ventas).
+// servicios + citas), paso 7 (proveedores y productos), paso 8 (ventas) y
+// paso 9 (EXT-MV-U01 corregir venta, extensión que no está en el ERS).
 // Uso: npm run api:integracion  (lee backend/.env; necesita db:migrar, db:semillas y db:admin)
 //
 // OJO: deja datos de prueba (un servicio, un cliente y citas). Úsenlo en una
@@ -339,6 +340,76 @@ try {
   revisar('un producto desactivado no se puede vender (D-021)', () => assert.equal(r.cuerpo.codigo, 'PRODUCTO_NO_DISPONIBLE'));
   assert.equal(await stockDe(), 5);
   await llamar('PATCH', `/admin/productos/${producto.id}/reactivar`);
+
+  // 13. EXT-MV-U01 Corregir venta (extensión acordada, no está en el ERS; D-008, D-022)
+  console.log('Corregir venta (EXT-MV-U01)');
+  await llamar('PUT', `/admin/productos/${producto.id}`, { ...datosProducto, precio: 3000 });
+  r = await llamar('POST', '/admin/ventas', venta({ productos: [{ id: producto.id, cantidad: 2 }] }));
+  const ventaEditable = r.cuerpo.data;
+  revisar('venta nueva: 2 unidades a 3000 y el servicio a 7000 (stock 5 → 3)', () => {
+    assert.equal(r.estado, 201, JSON.stringify(r.cuerpo));
+    assert.equal(ventaEditable.total, 2 * 3000 + 7000);
+  });
+  await llamar('PUT', `/admin/productos/${producto.id}`, { ...datosProducto, precio: 1000 });
+  const correccion = (extra = {}) => ({
+    referenciaCliente: referencia,
+    productos: [{ id: producto.id, cantidad: 4 }],
+    servicios: [{ id: servicio.id, precioFinal: 8000 }],
+    metodoPago: 'Efectivo',
+    pagoConfirmado: true,
+    motivo: 'Se llevó 2 unidades más.',
+    ...extra,
+  });
+  r = await llamar('PUT', `/admin/ventas/${ventaEditable.id}`, correccion({ motivo: '' }));
+  revisar('corregir pide un motivo', () => assert.equal(r.cuerpo.codigo, 'DATOS_INVALIDOS'));
+  r = await llamar('PUT', `/admin/ventas/${ventaEditable.id}`, correccion());
+  revisar('se corrige: mismo código, nueva cantidad y precio original del producto', () => {
+    assert.equal(r.estado, 200, JSON.stringify(r.cuerpo));
+    assert.equal(r.cuerpo.data.codigo, ventaEditable.codigo);
+    assert.equal(r.cuerpo.data.fechaHora, ventaEditable.fechaHora);
+    assert.equal(r.cuerpo.data.metodoPago, 'Efectivo');
+    assert.equal(r.cuerpo.data.productos[0].cantidad, 4);
+    assert.equal(r.cuerpo.data.productos[0].precioAplicado, 3000);
+    assert.equal(r.cuerpo.data.total, 4 * 3000 + 8000);
+  });
+  revisar('queda guardado cómo estaba antes, en RevisionVenta', () => {
+    assert.equal(r.cuerpo.data.revisiones.length, 1);
+    assert.equal(r.cuerpo.data.revisiones[0].motivo, 'Se llevó 2 unidades más.');
+    assert.equal(r.cuerpo.data.revisiones[0].datosAnteriores.total, 2 * 3000 + 7000);
+    assert.equal(r.cuerpo.data.revisiones[0].datosAnteriores.productos[0].cantidad, 2);
+  });
+  stock = await stockDe();
+  revisar('el stock se ajusta a la corrección: 5 − 4 = 1', () => assert.equal(stock, 1));
+
+  r = await llamar('PUT', `/admin/ventas/${ventaEditable.id}`, correccion({ productos: [{ id: producto.id, cantidad: 6 }] }));
+  revisar('si la corrección no alcanza el stock responde «Cantidad insuficiente» (disponible 1 + 4 = 5)', () => {
+    assert.equal(r.cuerpo.codigo, 'CANTIDAD_INSUFICIENTE');
+    assert.equal(r.cuerpo.detalles.disponible, 5);
+  });
+  stock = await stockDe();
+  r = await llamar('GET', `/admin/ventas/${ventaEditable.id}`);
+  revisar('y no cambia nada: ni stock, ni venta, ni historial', () => {
+    assert.equal(stock, 1);
+    assert.equal(r.cuerpo.data.productos[0].cantidad, 4);
+    assert.equal(r.cuerpo.data.revisiones.length, 1);
+  });
+
+  r = await llamar('PUT', `/admin/ventas/${ventaEditable.id}`, correccion({ productos: [], motivo: 'No se llevó productos.' }));
+  stock = await stockDe();
+  revisar('quitar el producto en una corrección lo devuelve al stock (vuelve a 5)', () => {
+    assert.deepEqual(r.cuerpo.data.productos, []);
+    assert.equal(r.cuerpo.data.revisiones.length, 2);
+    assert.equal(stock, 5);
+  });
+
+  await llamar('PATCH', `/admin/ventas/${ventaEditable.id}/anular`, { motivo: 'Prueba de corrección.' });
+  r = await llamar('PUT', `/admin/ventas/${ventaEditable.id}`, correccion());
+  revisar('una venta anulada no se puede corregir', () => {
+    assert.equal(r.estado, 409);
+    assert.equal(r.cuerpo.codigo, 'VENTA_NO_EDITABLE');
+  });
+  stock = await stockDe();
+  revisar('y el stock no cambia', () => assert.equal(stock, 5));
 
   r = await llamar('POST', '/auth/logout');
   revisar('la administradora cierra sesión (MA-02)', () => assert.equal(r.estado, 200));

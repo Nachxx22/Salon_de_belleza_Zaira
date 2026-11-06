@@ -23,41 +23,69 @@ async function transaccion(trabajo) {
   }
 }
 
-// MV-01: descuenta el stock con la condición Stock >= cantidad (D-016), toma el
-// precio del catálogo en ese mismo momento y registra venta, productos y
-// servicios. `calcularTotal` es la regla de ventas.logica.js.
+// Descuenta el stock de cada línea con la condición Stock >= cantidad (D-016) y
+// toma el precio. `previos` (solo al corregir, EXT-MV-U01) son los productos que
+// ya estaban en la venta: conservan su precio original y se aceptan aunque hoy
+// estén desactivados. Si algo no alcanza, revierte toda la transacción.
+async function descontarProductos(tx, lineas, previos = new Map()) {
+  const productos = [];
+  for (const { id, cantidad } of lineas) {
+    const yaEstaba = previos.has(id);
+    const { filas } = await tx.consulta(
+      `UPDATE dbo.Producto SET Stock = Stock - @cantidad
+       OUTPUT INSERTED.Nombre, INSERTED.Precio
+       WHERE Id = @id AND (Estado = N'Activo' OR @yaEstaba = 1) AND Stock >= @cantidad`,
+      { id, cantidad, yaEstaba },
+    );
+    if (filas.length === 0) {
+      const { filas: actual } = await tx.consulta('SELECT Nombre, Stock, Estado FROM dbo.Producto WHERE Id = @id', { id });
+      const p = actual[0];
+      if (!p || (p.Estado !== 'Activo' && !yaEstaba)) throw new SinGuardar({ problema: { tipo: 'producto', id, nombre: p?.Nombre ?? null } });
+      throw new SinGuardar({ problema: { tipo: 'stock', id, nombre: p.Nombre, disponible: p.Stock, pedido: cantidad } });
+    }
+    const precio = yaEstaba ? previos.get(id) : Number(filas[0].Precio);
+    productos.push({ id, nombre: filas[0].Nombre, cantidad, precio });
+  }
+  return productos;
+}
+
+// Servicios activos (o que ya estaban en la venta, al corregir).
+async function revisarServicios(tx, lineas, previos = new Set()) {
+  const servicios = [];
+  for (const { id, precioFinal } of lineas) {
+    const { filas } = await tx.consulta('SELECT Nombre, Estado FROM dbo.Servicio WHERE Id = @id', { id });
+    if (!filas[0] || (filas[0].Estado !== 'Activo' && !previos.has(id))) {
+      throw new SinGuardar({ problema: { tipo: 'servicio', id, nombre: filas[0]?.Nombre ?? null } });
+    }
+    servicios.push({ id, nombre: filas[0].Nombre, precioFinal });
+  }
+  return servicios;
+}
+
+async function insertarDetalle(tx, ventaId, productos, servicios) {
+  for (const p of productos) {
+    await tx.consulta(
+      `INSERT INTO dbo.VentaProducto (VentaId, ProductoId, Cantidad, PrecioAplicado)
+       VALUES (@ventaId, @productoId, @cantidad, @precio)`,
+      { ventaId, productoId: p.id, cantidad: p.cantidad, precio: [sql.Decimal(10, 2), p.precio] },
+    );
+  }
+  for (const s of servicios) {
+    await tx.consulta(
+      `INSERT INTO dbo.VentaServicio (VentaId, ServicioId, PrecioFinal)
+       VALUES (@ventaId, @servicioId, @precioFinal)`,
+      { ventaId, servicioId: s.id, precioFinal: [sql.Decimal(10, 2), s.precioFinal] },
+    );
+  }
+}
+
+// MV-01: descuenta el stock, toma el precio del catálogo en ese momento y
+// registra venta, productos y servicios. `calcularTotal` es la regla de ventas.logica.js.
 // Devuelve { id } o { problema: { tipo, ... } } sin guardar nada.
 export async function registrarVentaConStock(venta, calcularTotal) {
   return transaccion(async (tx) => {
-    const productos = [];
-    for (const { id, cantidad } of venta.productos) {
-      const { filas } = await tx.consulta(
-        `UPDATE dbo.Producto SET Stock = Stock - @cantidad
-         OUTPUT INSERTED.Id, INSERTED.Nombre, INSERTED.Precio
-         WHERE Id = @id AND Estado = N'Activo' AND Stock >= @cantidad`,
-        { id, cantidad },
-      );
-      if (filas.length === 0) {
-        const { filas: actual } = await tx.consulta(
-          'SELECT Nombre, Stock, Estado FROM dbo.Producto WHERE Id = @id',
-          { id },
-        );
-        const p = actual[0];
-        if (!p || p.Estado !== 'Activo') throw new SinGuardar({ problema: { tipo: 'producto', id, nombre: p?.Nombre ?? null } });
-        throw new SinGuardar({ problema: { tipo: 'stock', id, nombre: p.Nombre, disponible: p.Stock, pedido: cantidad } });
-      }
-      productos.push({ id, nombre: filas[0].Nombre, cantidad, precio: Number(filas[0].Precio) });
-    }
-
-    const servicios = [];
-    for (const { id, precioFinal } of venta.servicios) {
-      const { filas } = await tx.consulta('SELECT Nombre, Estado FROM dbo.Servicio WHERE Id = @id', { id });
-      if (!filas[0] || filas[0].Estado !== 'Activo') {
-        throw new SinGuardar({ problema: { tipo: 'servicio', id, nombre: filas[0]?.Nombre ?? null } });
-      }
-      servicios.push({ id, nombre: filas[0].Nombre, precioFinal });
-    }
-
+    const productos = await descontarProductos(tx, venta.productos);
+    const servicios = await revisarServicios(tx, venta.servicios);
     const total = calcularTotal({ productos, servicios });
     const { filas } = await tx.consulta(
       `INSERT INTO dbo.Venta (ReferenciaCliente, MetodoPago, Total)
@@ -65,24 +93,84 @@ export async function registrarVentaConStock(venta, calcularTotal) {
        VALUES (@referencia, @metodoPago, @total)`,
       { referencia: venta.referenciaCliente, metodoPago: venta.metodoPago, total: [sql.Decimal(12, 2), total] },
     );
-    const ventaId = filas[0].Id;
-
-    for (const p of productos) {
-      await tx.consulta(
-        `INSERT INTO dbo.VentaProducto (VentaId, ProductoId, Cantidad, PrecioAplicado)
-         VALUES (@ventaId, @productoId, @cantidad, @precio)`,
-        { ventaId, productoId: p.id, cantidad: p.cantidad, precio: [sql.Decimal(10, 2), p.precio] },
-      );
-    }
-    for (const s of servicios) {
-      await tx.consulta(
-        `INSERT INTO dbo.VentaServicio (VentaId, ServicioId, PrecioFinal)
-         VALUES (@ventaId, @servicioId, @precioFinal)`,
-        { ventaId, servicioId: s.id, precioFinal: [sql.Decimal(10, 2), s.precioFinal] },
-      );
-    }
-    return { id: ventaId };
+    await insertarDetalle(tx, filas[0].Id, productos, servicios);
+    return { id: filas[0].Id };
   });
+}
+
+// EXT-MV-U01 Actualizar venta (extensión, no está en el ERS; D-008 y D-022).
+// En una sola transacción: bloquea la venta, guarda cómo estaba en RevisionVenta,
+// devuelve al stock lo de la versión anterior, aplica la nueva y cambia
+// referencia, método de pago y total. El código y la fecha no cambian.
+// Devuelve { id }, { noExiste }, { noEditable } o { problema } sin guardar nada.
+export async function actualizarVentaConStock(id, venta, motivo, calcularTotal) {
+  return transaccion(async (tx) => {
+    const { filas: ventas } = await tx.consulta(
+      `SELECT ReferenciaCliente, MetodoPago, Total, Estado
+       FROM dbo.Venta WITH (UPDLOCK, ROWLOCK) WHERE Id = @id`,
+      { id },
+    );
+    const actual = ventas[0];
+    if (!actual) throw new SinGuardar({ noExiste: true });
+    if (actual.Estado !== 'Registrada') throw new SinGuardar({ noEditable: true });
+
+    const { filas: productosAntes } = await tx.consulta(
+      'SELECT ProductoId, Cantidad, PrecioAplicado FROM dbo.VentaProducto WHERE VentaId = @id',
+      { id },
+    );
+    const { filas: serviciosAntes } = await tx.consulta(
+      'SELECT ServicioId, PrecioFinal FROM dbo.VentaServicio WHERE VentaId = @id',
+      { id },
+    );
+    const datosAnteriores = {
+      referenciaCliente: actual.ReferenciaCliente,
+      metodoPago: actual.MetodoPago,
+      total: Number(actual.Total),
+      productos: productosAntes.map((f) => ({ id: f.ProductoId, cantidad: f.Cantidad, precioAplicado: Number(f.PrecioAplicado) })),
+      servicios: serviciosAntes.map((f) => ({ id: f.ServicioId, precioFinal: Number(f.PrecioFinal) })),
+    };
+    await tx.consulta(
+      'INSERT INTO dbo.RevisionVenta (VentaId, Motivo, DatosAnteriores) VALUES (@id, @motivo, @datos)',
+      { id, motivo, datos: JSON.stringify(datosAnteriores) },
+    );
+
+    // Se revierte la versión anterior y se reemplaza el detalle; queda guardada en RevisionVenta.
+    await tx.consulta(
+      `UPDATE p SET p.Stock = p.Stock + vp.Cantidad
+       FROM dbo.Producto p JOIN dbo.VentaProducto vp ON vp.ProductoId = p.Id
+       WHERE vp.VentaId = @id`,
+      { id },
+    );
+    await tx.consulta('DELETE FROM dbo.VentaProducto WHERE VentaId = @id', { id });
+    await tx.consulta('DELETE FROM dbo.VentaServicio WHERE VentaId = @id', { id });
+
+    const preciosPrevios = new Map(datosAnteriores.productos.map((p) => [p.id, p.precioAplicado]));
+    const productos = await descontarProductos(tx, venta.productos, preciosPrevios);
+    const servicios = await revisarServicios(tx, venta.servicios, new Set(datosAnteriores.servicios.map((s) => s.id)));
+    await insertarDetalle(tx, id, productos, servicios);
+
+    const total = calcularTotal({ productos, servicios });
+    await tx.consulta(
+      'UPDATE dbo.Venta SET ReferenciaCliente = @referencia, MetodoPago = @metodoPago, Total = @total WHERE Id = @id',
+      { id, referencia: venta.referenciaCliente, metodoPago: venta.metodoPago, total: [sql.Decimal(12, 2), total] },
+    );
+    return { id };
+  });
+}
+
+// EXT-MV-U01: correcciones de una venta, de la más reciente a la más antigua.
+export async function revisiones(ventaId) {
+  const { filas } = await consulta(
+    `SELECT Id, FechaHora, Motivo, DatosAnteriores FROM dbo.RevisionVenta
+     WHERE VentaId = @ventaId ORDER BY FechaHora DESC, Id DESC`,
+    { ventaId },
+  );
+  return filas.map((f) => ({
+    id: f.Id,
+    fechaHora: fechaHoraDeSql(f.FechaHora),
+    motivo: f.Motivo,
+    datosAnteriores: JSON.parse(f.DatosAnteriores),
+  }));
 }
 
 // MV-03: cambia el estado solo si sigue Registrada y devuelve al inventario las

@@ -4,8 +4,6 @@
 //   GET    /api/admin/ventas/:id         MV-02 detalle de una venta
 //   POST   /api/admin/ventas             MV-01 registrar venta (transacción con el stock)
 //   PATCH  /api/admin/ventas/:id/anular  MV-03 anular venta y reintegrar el stock
-//
-// Pendiente (paso 9):
 //   PUT    /api/admin/ventas/:id         EXT-MV-U01 actualizar venta (extensión, no está en el ERS)
 //
 // Capas: este archivo recibe la solicitud y responde; las reglas están en
@@ -30,6 +28,12 @@ rutasAdmin.get('/:id', async (req, res) => {
 rutasAdmin.post('/', async (req, res) => {
   const venta = await logica.registrar(req.body);
   responderCreado(res, venta, `Venta ${venta.codigo} registrada.`);
+});
+
+// EXT-MV-U01 (extensión acordada, no está en el ERS; D-008, D-022).
+rutasAdmin.put('/:id', async (req, res) => {
+  const venta = await logica.actualizar(idDeRuta(req.params.id), req.body);
+  responderOk(res, venta, { mensaje: `Venta ${venta.codigo} corregida. Se guardó cómo estaba antes.` });
 });
 
 rutasAdmin.patch('/:id/anular', async (req, res) => {

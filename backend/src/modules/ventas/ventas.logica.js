@@ -1,6 +1,6 @@
 // Reglas de MV-01 Registrar venta, MV-02 Consultar venta y MV-03 Anular venta
 // (dueño: Persona B). Fuente: CU-MV-01 a CU-MV-03 en Jira (ERS sección 3.2.2).
-// EXT-MV-U01 (actualizar venta) es una extensión aparte (paso 9).
+// EXT-MV-U01 (actualizar venta) es una extensión acordada que NO está en el ERS (D-008, D-022).
 // Sin SQL (D-017): todo acceso a la base pasa por ventas.datos.js.
 import { ErrorApp, errores } from '../../shared/errores.js';
 import { enteroPositivo, fecha as validarFecha, montoPositivo, textoOpcional, textoRequerido } from '../../shared/validacion.js';
@@ -71,34 +71,54 @@ export function calcularTotal({ productos, servicios }) {
   return centimos(totalProductos + totalServicios);
 }
 
+// MV-02 detalle; `revisiones` es parte de la extensión EXT-MV-U01.
 export async function detalle(id) {
   const venta = await datos.obtenerDetalle(id);
   if (!venta) throw errores.noEncontrado('No existe la venta solicitada.');
-  return venta;
+  return { ...venta, revisiones: await datos.revisiones(id) };
 }
 
-// MV-01 Registrar venta. Venta y stock se guardan juntos o no se guarda nada.
-export async function registrar(entrada) {
-  const venta = validarVenta(entrada);
-  const resultado = await datos.registrarVentaConStock(venta, calcularTotal);
-  const { problema } = resultado;
-  if (problema?.tipo === 'stock') {
-    throw new ErrorApp(409, 'CANTIDAD_INSUFICIENTE', MENSAJE_CANTIDAD_INSUFICIENTE, {
+// Convierte el resultado de la transacción en el error del caso de uso.
+function errorDeProblema(problema) {
+  if (problema.tipo === 'stock') {
+    return new ErrorApp(409, 'CANTIDAD_INSUFICIENTE', MENSAJE_CANTIDAD_INSUFICIENTE, {
       campo: 'cantidad',
       producto: problema.nombre,
       disponible: problema.disponible,
       solicitado: problema.pedido,
     });
   }
-  if (problema?.tipo === 'producto') {
-    throw new ErrorApp(409, 'PRODUCTO_NO_DISPONIBLE',
+  if (problema.tipo === 'producto') {
+    return new ErrorApp(409, 'PRODUCTO_NO_DISPONIBLE',
       `El producto ${problema.nombre ? `«${problema.nombre}» ` : ''}no está disponible para la venta.`, { campo: 'productos' });
   }
-  if (problema?.tipo === 'servicio') {
-    throw new ErrorApp(409, 'SERVICIO_NO_DISPONIBLE',
-      `El servicio ${problema.nombre ? `«${problema.nombre}» ` : ''}no está disponible para la venta.`, { campo: 'servicios' });
-  }
+  return new ErrorApp(409, 'SERVICIO_NO_DISPONIBLE',
+    `El servicio ${problema.nombre ? `«${problema.nombre}» ` : ''}no está disponible para la venta.`, { campo: 'servicios' });
+}
+
+// MV-01 Registrar venta. Venta y stock se guardan juntos o no se guarda nada.
+export async function registrar(entrada) {
+  const venta = validarVenta(entrada);
+  const resultado = await datos.registrarVentaConStock(venta, calcularTotal);
+  if (resultado.problema) throw errorDeProblema(resultado.problema);
   return detalle(resultado.id);
+}
+
+// EXT-MV-U01 Actualizar venta (extensión acordada, no está en el ERS; D-008, D-022).
+// Mismas reglas que MV-01 más un motivo obligatorio. Solo ventas Registradas.
+export async function actualizar(id, entrada = {}) {
+  if (vacio(entrada.motivo)) {
+    throw errores.datosInvalidos('Indique el motivo de la corrección.', { campo: 'motivo' });
+  }
+  const motivo = textoRequerido(entrada.motivo, 'motivo', { max: 500 });
+  const venta = validarVenta(entrada);
+  const resultado = await datos.actualizarVentaConStock(id, venta, motivo, calcularTotal);
+  if (resultado.noExiste) throw errores.noEncontrado('No existe la venta solicitada.');
+  if (resultado.noEditable) {
+    throw new ErrorApp(409, 'VENTA_NO_EDITABLE', 'Solo se pueden corregir ventas en estado Registrada.');
+  }
+  if (resultado.problema) throw errorDeProblema(resultado.problema);
+  return detalle(id);
 }
 
 // MV-02 Consultar venta: filtros opcionales.

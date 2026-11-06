@@ -176,6 +176,7 @@ Cuerpo de `POST /api/admin/citas`:
 | GET | `/api/admin/ventas/:id` | MV-02 | — | `200 venta` |
 | POST | `/api/admin/ventas` | MV-01 | ver abajo | `201 venta`, estado `Registrada` |
 | PATCH | `/api/admin/ventas/:id/anular` | MV-03 | `{ motivo }` (obligatorio, hasta 500) | `200 venta`, estado `Anulada`; repone el stock |
+| PUT | `/api/admin/ventas/:id` | **EXT-MV-U01** (extensión acordada, no está en el ERS; D-008, D-022) | igual que POST más `motivo` (obligatorio) | `200 venta` corregida; mismo código y fecha |
 
 Cuerpo de `POST /api/admin/ventas`:
 
@@ -189,8 +190,9 @@ Cuerpo de `POST /api/admin/ventas`:
 }
 ```
 
-- Venta: `{ id, codigo, fechaHora: "2026-11-06 10:30", referenciaCliente, metodoPago, total, estado, motivoAnulacion, productos: [{ id, nombre, marca, cantidad, precioAplicado }], servicios: [{ id, nombre, precioFinal }] }`.
+- Venta: `{ id, codigo, fechaHora: "2026-11-06 10:30", referenciaCliente, metodoPago, total, estado, motivoAnulacion, productos: [{ id, nombre, marca, cantidad, precioAplicado }], servicios: [{ id, nombre, precioFinal }], revisiones: [{ id, fechaHora, motivo, datosAnteriores }] }`. `revisiones` pertenece a la extensión EXT-MV-U01 (vacío si nunca se corrigió).
 - El precio de cada producto lo toma el servidor del catálogo al registrar (no se envía); el total lo calcula el servidor. Un producto repetido suma sus cantidades; un servicio va una sola vez.
+- EXT-MV-U01: `409 VENTA_NO_EDITABLE` si la venta está Anulada. Los productos que ya estaban conservan su precio original; los nuevos toman el del catálogo.
 - Códigos de negocio: `409 CANTIDAD_INSUFICIENTE` con el mensaje exacto «Cantidad insuficiente» y `detalles: { producto, disponible, solicitado }`; `400 PAGO_NO_CONFIRMADO`; `409 PRODUCTO_NO_DISPONIBLE` y `409 SERVICIO_NO_DISPONIBLE` (desactivado o inexistente); `409 VENTA_YA_ANULADA`.
 - Registrar descuenta el stock y anular lo repone en la misma transacción que la venta (D-016, D-017); nunca quedan cambios parciales.
 
@@ -198,5 +200,4 @@ Cuerpo de `POST /api/admin/ventas`:
 
 Cada responsable completa la tabla de rutas de su módulo antes de programarlo. Las rutas propuestas están en el comentario inicial de cada archivo `backend/src/modules/<modulo>/<modulo>.rutas.js`.
 
-- **EXT-MV-U01 Actualizar venta** (Persona B, paso 9).
 - **Citas, Agenda, Solicitudes** (Persona A). La disponibilidad se calcula con un solo algoritmo en el servidor; React no decide si un horario es válido.

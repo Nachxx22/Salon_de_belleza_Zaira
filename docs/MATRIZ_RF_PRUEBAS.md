@@ -54,7 +54,7 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 | MV-01 | Registrar venta | Alta | SCRUM-35 | SCRUM-89 | P0 | integrado | Venta de productos y/o servicios en una transacción con el stock (Stock >= cantidad), «Cantidad insuficiente», pago confirmado, total del servidor. Pruebas de reglas y de punta a punta con SQL Server (CI). Falta probar en pantalla. |
 | MV-02 | Consultar venta | Alta | SCRUM-36 | SCRUM-90 | P0 | integrado | Listado con filtros por código, fechas, cliente, método y estado; detalle con precios registrados. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
 | MV-03 | Anular venta | Media | SCRUM-38 | SCRUM-92 | P0 | integrado | Motivo obligatorio, confirmación, repone el stock en la misma transacción, no se anula dos veces. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
-| EXT-MV-U01 | Actualizar venta (**extensión acordada, no está en el ERS**) | — | — | — | P0 | pendiente | |
+| EXT-MV-U01 | Actualizar venta (**extensión acordada, no está en el ERS**) | — | — | — | P0 | integrado | Corrección con motivo en una transacción: guarda la versión anterior en RevisionVenta, revierte y aplica el stock, conserva código, fecha y precios originales; no corrige ventas anuladas. Punta a punta con SQL Server (CI). Falta probar en pantalla. |
 
 ## Citas y Agenda — Persona A
 

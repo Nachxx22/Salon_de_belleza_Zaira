@@ -1,4 +1,5 @@
 // MV-01 Registrar venta, MV-02 Consultar venta y MV-03 Anular venta — responsable: Persona B (Ignacio).
+// Incluye la extensión EXT-MV-U01 Corregir venta, que NO está en el ERS (D-008, D-022).
 // El total, los precios de productos y el stock los vuelve a calcular y validar el servidor.
 import { useEffect, useState } from 'react';
 import { api } from '../../shared/api/cliente.js';
@@ -20,10 +21,13 @@ function Selector({ id, etiqueta, valor, alCambiar, opciones, vacio }) {
   );
 }
 
-// MV-01 Registrar venta.
+// MV-01 Registrar venta y EXT-MV-U01 Corregir venta (extensión, no está en el ERS).
 // Elegir un producto o servicio lo agrega de una vez a la venta:
 // - Producto: precio del catálogo (fijo); se edita solo la cantidad, sin pasar del stock.
-// - Servicio: se escribe el precio final cobrado, en colones enteros.
+// - Servicio: se escribe el precio final cobrado, en colones enteros; el precio
+//   aproximado guardado se muestra solo como referencia.
+// Al corregir, los productos que ya estaban conservan su precio original y pueden
+// usar las unidades que la venta tenía apartadas.
 // El total se ve mientras se arma la venta; el oficial lo calcula el servidor.
 const soloDigitos = (texto) => texto.replace(/\D/g, '');
 // Colones enteros: lo que esté después de un punto o coma decimal se descarta (40000.09 → 40000).
@@ -33,26 +37,39 @@ const bloquearNoEnteros = (e) => {
   if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
 };
 
-function RegistrarVenta({ alTerminar, alCancelar }) {
+function FormularioVenta({ original = null, alTerminar, alCancelar }) {
+  const corrigiendo = original !== null;
   const [productos, setProductos] = useState([]);
   const [servicios, setServicios] = useState([]);
-  const [referencia, setReferencia] = useState('');
-  const [lineasProducto, setLineasProducto] = useState([]); // { id, cantidad }
-  const [lineasServicio, setLineasServicio] = useState([]); // { id, precioFinal }
-  const [metodoPago, setMetodoPago] = useState('');
+  const [referencia, setReferencia] = useState(original?.referenciaCliente ?? '');
+  const [lineasProducto, setLineasProducto] = useState(
+    original ? original.productos.map((p) => ({ id: p.id, cantidad: String(p.cantidad) })) : [],
+  );
+  const [lineasServicio, setLineasServicio] = useState(
+    original ? original.servicios.map((s) => ({ id: s.id, precioFinal: String(Math.round(s.precioFinal)) })) : [],
+  );
+  const [metodoPago, setMetodoPago] = useState(original?.metodoPago ?? '');
   const [pagoConfirmado, setPagoConfirmado] = useState(false);
+  const [motivo, setMotivo] = useState('');
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.get('/admin/productos'), api.get('/publico/servicios')])
+    Promise.all([api.get('/admin/productos'), api.get('/admin/servicios')])
       .then(([listaProductos, listaServicios]) => {
-        setProductos(listaProductos.filter((p) => p.estado === 'Activo'));
-        setServicios(listaServicios);
+        const enVentaP = new Map((original?.productos ?? []).map((p) => [p.id, p]));
+        const enVentaS = new Set((original?.servicios ?? []).map((s) => s.id));
+        setProductos(listaProductos
+          .filter((p) => p.estado === 'Activo' || enVentaP.has(p.id))
+          // Lo que ya estaba en la venta: su precio original y sus unidades apartadas cuentan como disponibles.
+          .map((p) => (enVentaP.has(p.id)
+            ? { ...p, precio: enVentaP.get(p.id).precioAplicado, stock: p.stock + enVentaP.get(p.id).cantidad }
+            : p)));
+        setServicios(listaServicios.filter((s) => s.estado === 'Activo' || enVentaS.has(s.id)));
       })
       .catch((e) => setError(e.message));
-  }, []);
+  }, [original]);
 
   const producto = (id) => productos.find((p) => p.id === id);
   const servicio = (id) => servicios.find((s) => s.id === id);
@@ -80,7 +97,7 @@ function RegistrarVenta({ alTerminar, alCancelar }) {
     let valor = enteroDe(texto);
     if (valor !== '' && Number(valor) > stock) {
       valor = String(stock);
-      setAviso(`Solo hay ${stock} unidades de «${producto(id).nombre}» en stock.`);
+      setAviso(`Solo hay ${stock} unidades de «${producto(id).nombre}» disponibles.`);
     }
     setLineasProducto((actual) => actual.map((l) => (l.id === id ? { ...l, cantidad: valor } : l)));
   }
@@ -96,7 +113,7 @@ function RegistrarVenta({ alTerminar, alCancelar }) {
     lineasProducto.reduce((suma, l) => suma + subtotalProducto(l), 0) +
     lineasServicio.reduce((suma, l) => suma + (Number(l.precioFinal) || 0), 0);
 
-  async function registrar(evento) {
+  async function guardar(evento) {
     evento.preventDefault();
     setError('');
     setAviso('');
@@ -118,19 +135,28 @@ function RegistrarVenta({ alTerminar, alCancelar }) {
       setError('Seleccione el método de pago.');
       return;
     }
-    if (!pagoConfirmado) {
-      setError('Confirme que recibió el pago antes de registrar la venta.');
+    if (corrigiendo && !motivo.trim()) {
+      setError('Indique el motivo de la corrección.');
       return;
     }
+    if (!pagoConfirmado) {
+      setError(corrigiendo
+        ? 'Confirme que el pago corresponde al nuevo total.'
+        : 'Confirme que recibió el pago antes de registrar la venta.');
+      return;
+    }
+    const cuerpo = {
+      referenciaCliente: referencia,
+      productos: lineasProducto.map((l) => ({ id: l.id, cantidad: Number(l.cantidad) })),
+      servicios: lineasServicio.map((l) => ({ id: l.id, precioFinal: Number(l.precioFinal) })),
+      metodoPago,
+      pagoConfirmado,
+    };
     setEnviando(true);
     try {
-      const venta = await api.post('/admin/ventas', {
-        referenciaCliente: referencia,
-        productos: lineasProducto.map((l) => ({ id: l.id, cantidad: Number(l.cantidad) })),
-        servicios: lineasServicio.map((l) => ({ id: l.id, precioFinal: Number(l.precioFinal) })),
-        metodoPago,
-        pagoConfirmado,
-      });
+      const venta = corrigiendo
+        ? await api.put(`/admin/ventas/${original.id}`, { ...cuerpo, motivo })
+        : await api.post('/admin/ventas', cuerpo);
       alTerminar(venta);
     } catch (e) {
       const d = e.detalles;
@@ -147,10 +173,15 @@ function RegistrarVenta({ alTerminar, alCancelar }) {
 
   return (
     <section className="tarjeta">
-      <h2>Registrar venta</h2>
+      <h2>{corrigiendo ? `Corregir venta ${original.codigo}` : 'Registrar venta'}</h2>
+      {corrigiendo && (
+        <p className="texto-suave">
+          Extensión EXT-MV-U01 (no está en el ERS). Se guarda cómo estaba la venta antes del cambio; el código y la fecha no cambian.
+        </p>
+      )}
       <Mensaje tipo="error">{error}</Mensaje>
       <Mensaje tipo="aviso">{aviso}</Mensaje>
-      <form onSubmit={registrar} noValidate>
+      <form onSubmit={guardar} noValidate>
         <Campo etiqueta="Cliente (opcional)" maxLength={150} ayuda="Nombre o referencia. Puede quedar vacío."
           value={referencia} onChange={(e) => setReferencia(e.target.value)} />
 
@@ -175,9 +206,10 @@ function RegistrarVenta({ alTerminar, alCancelar }) {
               <tbody>
                 {lineasProducto.map((l) => {
                   const p = producto(l.id);
+                  if (!p) return null;
                   return (
                     <tr key={l.id}>
-                      <td>{p.nombre}<br /><span className="texto-suave">Stock: {p.stock}</span></td>
+                      <td>{p.nombre}<br /><span className="texto-suave">Disponible: {p.stock}</span></td>
                       <td>{colones(p.precio)}</td>
                       <td>
                         <input type="number" inputMode="numeric" min="1" max={p.stock} step="1" style={{ width: '6em' }}
@@ -204,46 +236,66 @@ function RegistrarVenta({ alTerminar, alCancelar }) {
             <label htmlFor="agregar-servicio">Agregar servicio</label>
             <select id="agregar-servicio" value="" onChange={(e) => elegirServicio(e.target.value)}>
               <option value="">Seleccione un servicio para agregarlo</option>
-              {serviciosParaElegir.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+              {serviciosParaElegir.map((s) => (
+                <option key={s.id} value={s.id}>{s.nombre} · precio aproximado {colones(s.precioAproximado)}</option>
+              ))}
             </select>
           </div>
           {lineasServicio.length > 0 && (
             <table className="tabla">
               <thead>
-                <tr><th scope="col">Servicio</th><th scope="col">Precio final cobrado (₡)</th><th scope="col"><span className="texto-suave">Quitar</span></th></tr>
+                <tr><th scope="col">Servicio</th><th scope="col">Precio aproximado</th><th scope="col">Precio final cobrado (₡)</th><th scope="col"><span className="texto-suave">Quitar</span></th></tr>
               </thead>
               <tbody>
-                {lineasServicio.map((l) => (
-                  <tr key={l.id}>
-                    <td>{servicio(l.id).nombre}</td>
-                    <td>
-                      <input type="text" inputMode="numeric" placeholder="Ej. 40000" style={{ width: '9em' }}
-                        aria-label={`Precio final de ${servicio(l.id).nombre}`} value={l.precioFinal} onKeyDown={bloquearNoEnteros}
-                        onChange={(e) => cambio(() => setLineasServicio(lineasServicio.map((x) =>
-                          (x.id === l.id ? { ...x, precioFinal: enteroDe(e.target.value) } : x))))} />
-                    </td>
-                    <td>
-                      <Boton variante="secundario" onClick={() => cambio(() => setLineasServicio(lineasServicio.filter((x) => x.id !== l.id)))}>
-                        Quitar
-                      </Boton>
-                    </td>
-                  </tr>
-                ))}
+                {lineasServicio.map((l) => {
+                  const s = servicio(l.id);
+                  if (!s) return null;
+                  return (
+                    <tr key={l.id}>
+                      <td>{s.nombre}</td>
+                      <td className="texto-suave">{colones(s.precioAproximado)}</td>
+                      <td>
+                        <input type="text" inputMode="numeric" placeholder={`Ej. ${Math.round(s.precioAproximado)}`} style={{ width: '9em' }}
+                          aria-label={`Precio final de ${s.nombre}`} value={l.precioFinal} onKeyDown={bloquearNoEnteros}
+                          onChange={(e) => cambio(() => setLineasServicio(lineasServicio.map((x) =>
+                            (x.id === l.id ? { ...x, precioFinal: enteroDe(e.target.value) } : x))))} />
+                      </td>
+                      <td>
+                        <Boton variante="secundario" onClick={() => cambio(() => setLineasServicio(lineasServicio.filter((x) => x.id !== l.id)))}>
+                          Quitar
+                        </Boton>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
         </fieldset>
 
-        <p><strong>Total: {colones(Math.round(total * 100) / 100)}</strong></p>
+        <p>
+          <strong>Total: {colones(Math.round(total * 100) / 100)}</strong>
+          {corrigiendo && <span className="texto-suave"> (antes {colones(original.total)})</span>}
+        </p>
         <Selector id="metodo-pago" etiqueta="Método de pago *" valor={metodoPago} alCambiar={(v) => cambio(() => setMetodoPago(v))} vacio="Seleccione"
           opciones={METODOS.map((m) => [m, m])} />
+        {corrigiendo && (
+          <div className="campo">
+            <label htmlFor="motivo-correccion">Motivo de la corrección <span className="obligatorio" aria-hidden="true">*</span></label>
+            <textarea id="motivo-correccion" rows={2} maxLength={500} value={motivo} onChange={(e) => cambio(() => setMotivo(e.target.value))} />
+          </div>
+        )}
         <div className="campo">
           <label>
             <input type="checkbox" checked={pagoConfirmado} onChange={(e) => cambio(() => setPagoConfirmado(e.target.checked))} />{' '}
-            Confirmo que recibí el pago (el sistema no procesa pagos)
+            {corrigiendo
+              ? 'Confirmo que el pago corresponde al nuevo total (el sistema no procesa pagos)'
+              : 'Confirmo que recibí el pago (el sistema no procesa pagos)'}
           </label>
         </div>
-        <Boton type="submit" disabled={enviando}>{enviando ? 'Registrando…' : 'Registrar venta'}</Boton>{' '}
+        <Boton type="submit" disabled={enviando}>
+          {enviando ? 'Guardando…' : corrigiendo ? 'Guardar corrección' : 'Registrar venta'}
+        </Boton>{' '}
         <Boton variante="secundario" onClick={alCancelar} disabled={enviando}>Cancelar</Boton>
       </form>
     </section>
@@ -251,11 +303,11 @@ function RegistrarVenta({ alTerminar, alCancelar }) {
 }
 
 // MV-02 detalle y MV-03 Anular venta.
-function DetalleVenta({ venta, alCambiar, alVolver }) {
+function DetalleVenta({ venta, alCambiar, alCorregir, alVolver, mensajeInicial = '' }) {
   const [paso, setPaso] = useState('ver'); // ver → motivo → confirmar
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState('');
-  const [exito, setExito] = useState('');
+  const [exito, setExito] = useState(mensajeInicial);
 
   async function anular() {
     setError('');
@@ -292,8 +344,24 @@ function DetalleVenta({ venta, alCambiar, alVolver }) {
         <ul>{venta.servicios.map((s) => <li key={s.id}>{s.nombre}: {colones(s.precioFinal)}</li>)}</ul>
       )}
 
+      {venta.revisiones.length > 0 && (
+        <>
+          <h3>Correcciones (EXT-MV-U01)</h3>
+          <ul>
+            {venta.revisiones.map((r) => (
+              <li key={r.id}>
+                {r.fechaHora}: {r.motivo} <span className="texto-suave">(antes: total {colones(r.datosAnteriores.total)}, {r.datosAnteriores.metodoPago})</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
       {venta.estado === 'Registrada' && paso === 'ver' && (
-        <Boton variante="peligro" onClick={() => { setExito(''); setPaso('motivo'); }}>Anular venta</Boton>
+        <p>
+          <Boton variante="secundario" onClick={alCorregir}>Corregir venta</Boton>{' '}
+          <Boton variante="peligro" onClick={() => { setExito(''); setPaso('motivo'); }}>Anular venta</Boton>
+        </p>
       )}
       {paso === 'motivo' && (
         <div>
@@ -327,6 +395,8 @@ export default function AdminVentas() {
   const [hayFiltros, setHayFiltros] = useState(false);
   const [detalle, setDetalle] = useState(null);
   const [registrando, setRegistrando] = useState(false);
+  const [corrigiendo, setCorrigiendo] = useState(false);
+  const [mensajeDetalle, setMensajeDetalle] = useState('');
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
 
@@ -349,6 +419,7 @@ export default function AdminVentas() {
 
   async function verDetalle(id) {
     setExito('');
+    setMensajeDetalle('');
     try {
       setDetalle(await api.get(`/admin/ventas/${id}`));
     } catch (e) {
@@ -358,7 +429,7 @@ export default function AdminVentas() {
 
   if (registrando) {
     return (
-      <RegistrarVenta
+      <FormularioVenta
         alCancelar={() => setRegistrando(false)}
         alTerminar={(venta) => {
           setRegistrando(false);
@@ -369,8 +440,32 @@ export default function AdminVentas() {
     );
   }
 
+  if (detalle && corrigiendo) {
+    return (
+      <FormularioVenta
+        original={detalle}
+        alCancelar={() => setCorrigiendo(false)}
+        alTerminar={(venta) => {
+          setCorrigiendo(false);
+          setDetalle(venta);
+          setMensajeDetalle(`Venta ${venta.codigo} corregida. Se guardó cómo estaba antes.`);
+          cargar();
+        }}
+      />
+    );
+  }
+
   if (detalle) {
-    return <DetalleVenta venta={detalle} alCambiar={(v) => { setDetalle(v); cargar(); }} alVolver={() => setDetalle(null)} />;
+    return (
+      <DetalleVenta
+        key={`${detalle.id}-${detalle.revisiones.length}`}
+        venta={detalle}
+        mensajeInicial={mensajeDetalle}
+        alCambiar={(v) => { setDetalle(v); cargar(); }}
+        alCorregir={() => { setMensajeDetalle(''); setCorrigiendo(true); }}
+        alVolver={() => { setDetalle(null); setMensajeDetalle(''); }}
+      />
+    );
   }
 
   const filtro = (campo) => (e) => setFiltros({ ...filtros, [campo]: e.target.value });

@@ -128,3 +128,14 @@ Otras decisiones del paso 7: el catálogo público de productos no muestra stock
 - **Pago:** el campo `pagoConfirmado: true` es obligatorio (MV-01, restricción 8). No se guarda: sin él la venta no existe.
 - **Anular:** solo cambia `Estado` y `MotivoAnulacion` y suma de vuelta las cantidades al stock, todo en una transacción (MV-03). Una venta anulada no se reactiva (D-020).
 - `validarFecha` pasó a `shared/validacion.js` (`fecha`) para que Ventas no dependa del módulo de Citas.
+
+## D-022 — Cómo funciona EXT-MV-U01 Corregir venta (6 nov 2026)
+
+**Extensión acordada, no es parte del ERS** (D-008). El ERS indica anular y registrar otra venta; esta corrección se agrega para mostrar el CRUD completo de Ventas.
+
+- `PUT /api/admin/ventas/:id` con el mismo cuerpo que registrar más un `motivo` obligatorio. Solo ventas `Registrada` (`409 VENTA_NO_EDITABLE`).
+- En una sola transacción: bloquea la venta, guarda en `RevisionVenta.DatosAnteriores` (JSON) la referencia, el método de pago, el total y el detalle anteriores, devuelve al stock las cantidades anteriores, reemplaza el detalle por el nuevo descontando stock con `Stock >= cantidad` y actualiza referencia, método de pago y total. Si algo falla («Cantidad insuficiente», producto o servicio no disponible) no cambia nada.
+- El código y la fecha de la venta no cambian. Los productos que ya estaban conservan su precio original y se pueden mantener aunque hoy estén desactivados; los productos o servicios nuevos deben estar activos y toman el precio del catálogo.
+- Las filas de `VentaProducto` y `VentaServicio` se reemplazan; la versión anterior completa queda en `RevisionVenta`, así que no se pierde historial. La venta nunca se borra.
+- El detalle de la venta (MV-02) muestra las correcciones con su fecha y motivo.
+- Formulario de venta: los servicios muestran el precio aproximado guardado solo como referencia; el precio final se escribe en colones enteros.
