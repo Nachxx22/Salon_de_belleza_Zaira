@@ -21,16 +21,27 @@ function Selector({ id, etiqueta, valor, alCambiar, opciones, vacio }) {
 }
 
 // MV-01 Registrar venta.
+// Elegir un producto o servicio lo agrega de una vez a la venta:
+// - Producto: precio del catálogo (fijo); se edita solo la cantidad, sin pasar del stock.
+// - Servicio: se escribe el precio final cobrado, en colones enteros.
+// El total se ve mientras se arma la venta; el oficial lo calcula el servidor.
+const soloDigitos = (texto) => texto.replace(/\D/g, '');
+// Colones enteros: lo que esté después de un punto o coma decimal se descarta (40000.09 → 40000).
+const enteroDe = (texto) => soloDigitos(texto.split(/[.,]/)[0]);
+// En los campos de números enteros no se pueden escribir decimales ni signos.
+const bloquearNoEnteros = (e) => {
+  if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+};
+
 function RegistrarVenta({ alTerminar, alCancelar }) {
   const [productos, setProductos] = useState([]);
   const [servicios, setServicios] = useState([]);
   const [referencia, setReferencia] = useState('');
   const [lineasProducto, setLineasProducto] = useState([]); // { id, cantidad }
   const [lineasServicio, setLineasServicio] = useState([]); // { id, precioFinal }
-  const [productoElegido, setProductoElegido] = useState('');
-  const [servicioElegido, setServicioElegido] = useState('');
   const [metodoPago, setMetodoPago] = useState('');
   const [pagoConfirmado, setPagoConfirmado] = useState(false);
+  const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
 
@@ -46,30 +57,61 @@ function RegistrarVenta({ alTerminar, alCancelar }) {
   const producto = (id) => productos.find((p) => p.id === id);
   const servicio = (id) => servicios.find((s) => s.id === id);
 
-  function agregarProducto() {
-    const id = Number(productoElegido);
-    if (!id || lineasProducto.some((l) => l.id === id)) return;
-    setLineasProducto([...lineasProducto, { id, cantidad: '1' }]);
-    setProductoElegido('');
+  // Cualquier cambio borra los mensajes anteriores.
+  function cambio(accion) {
+    setError('');
+    setAviso('');
+    accion();
   }
 
-  function agregarServicio() {
-    const id = Number(servicioElegido);
+  function elegirProducto(valor) {
+    const id = Number(valor);
+    if (!id) return;
+    cambio(() => {
+      const ya = lineasProducto.find((l) => l.id === id);
+      // Elegir otra vez el mismo producto suma una unidad, sin pasar del stock.
+      if (ya) cambiarCantidad(id, String(Number(ya.cantidad || 0) + 1));
+      else setLineasProducto([...lineasProducto, { id, cantidad: '1' }]);
+    });
+  }
+
+  function cambiarCantidad(id, texto) {
+    const stock = producto(id).stock;
+    let valor = enteroDe(texto);
+    if (valor !== '' && Number(valor) > stock) {
+      valor = String(stock);
+      setAviso(`Solo hay ${stock} unidades de «${producto(id).nombre}» en stock.`);
+    }
+    setLineasProducto((actual) => actual.map((l) => (l.id === id ? { ...l, cantidad: valor } : l)));
+  }
+
+  function elegirServicio(valor) {
+    const id = Number(valor);
     if (!id || lineasServicio.some((l) => l.id === id)) return;
-    setLineasServicio([...lineasServicio, { id, precioFinal: String(servicio(id).precioAproximado) }]);
-    setServicioElegido('');
+    cambio(() => setLineasServicio([...lineasServicio, { id, precioFinal: '' }]));
   }
 
-  // Vista previa; el total oficial lo calcula el servidor.
+  const subtotalProducto = (l) => (producto(l.id)?.precio ?? 0) * (Number(l.cantidad) || 0);
   const total =
-    lineasProducto.reduce((s, l) => s + (producto(l.id)?.precio ?? 0) * (Number(l.cantidad) || 0), 0) +
-    lineasServicio.reduce((s, l) => s + (Number(l.precioFinal) || 0), 0);
+    lineasProducto.reduce((suma, l) => suma + subtotalProducto(l), 0) +
+    lineasServicio.reduce((suma, l) => suma + (Number(l.precioFinal) || 0), 0);
 
   async function registrar(evento) {
     evento.preventDefault();
     setError('');
+    setAviso('');
     if (lineasProducto.length + lineasServicio.length === 0) {
-      setError('La venta debe incluir al menos un producto o servicio.');
+      setError('Elija al menos un producto o servicio para la venta.');
+      return;
+    }
+    const sinCantidad = lineasProducto.find((l) => !(Number(l.cantidad) > 0));
+    if (sinCantidad) {
+      setError(`Indique una cantidad mayor que cero para «${producto(sinCantidad.id).nombre}».`);
+      return;
+    }
+    const sinPrecio = lineasServicio.find((l) => !(Number(l.precioFinal) > 0));
+    if (sinPrecio) {
+      setError(`Escriba el precio final cobrado de «${servicio(sinPrecio.id).nombre}».`);
       return;
     }
     if (!metodoPago) {
@@ -84,8 +126,8 @@ function RegistrarVenta({ alTerminar, alCancelar }) {
     try {
       const venta = await api.post('/admin/ventas', {
         referenciaCliente: referencia,
-        productos: lineasProducto,
-        servicios: lineasServicio,
+        productos: lineasProducto.map((l) => ({ id: l.id, cantidad: Number(l.cantidad) })),
+        servicios: lineasServicio.map((l) => ({ id: l.id, precioFinal: Number(l.precioFinal) })),
         metodoPago,
         pagoConfirmado,
       });
@@ -100,55 +142,104 @@ function RegistrarVenta({ alTerminar, alCancelar }) {
     }
   }
 
+  const productosParaElegir = productos.filter((p) => !lineasProducto.some((l) => l.id === p.id));
+  const serviciosParaElegir = servicios.filter((s) => !lineasServicio.some((l) => l.id === s.id));
+
   return (
     <section className="tarjeta">
       <h2>Registrar venta</h2>
       <Mensaje tipo="error">{error}</Mensaje>
+      <Mensaje tipo="aviso">{aviso}</Mensaje>
       <form onSubmit={registrar} noValidate>
         <Campo etiqueta="Cliente (opcional)" maxLength={150} ayuda="Nombre o referencia. Puede quedar vacío."
           value={referencia} onChange={(e) => setReferencia(e.target.value)} />
 
         <fieldset>
           <legend>Productos</legend>
-          {lineasProducto.map((l) => {
-            const p = producto(l.id);
-            return (
-              <div className="campo" key={l.id}>
-                <label htmlFor={`cantidad-${l.id}`}>{p.nombre} ({colones(p.precio)} c/u, stock {p.stock})</label>
-                <input id={`cantidad-${l.id}`} type="number" min="1" step="1" style={{ width: '6em' }} value={l.cantidad}
-                  onChange={(e) => setLineasProducto(lineasProducto.map((x) => (x.id === l.id ? { ...x, cantidad: e.target.value } : x)))} />{' '}
-                <Boton variante="secundario" onClick={() => setLineasProducto(lineasProducto.filter((x) => x.id !== l.id))}>Quitar</Boton>
-              </div>
-            );
-          })}
-          <Selector id="agregar-producto" etiqueta="Agregar producto" valor={productoElegido} alCambiar={setProductoElegido} vacio="Seleccione un producto"
-            opciones={productos.filter((p) => !lineasProducto.some((l) => l.id === p.id))
-              .map((p) => [p.id, `${p.nombre} · ${colones(p.precio)} · stock ${p.stock}`])} />
-          <Boton variante="secundario" onClick={agregarProducto} disabled={!productoElegido}>Agregar producto</Boton>
+          <div className="campo">
+            <label htmlFor="agregar-producto">Agregar producto</label>
+            <select id="agregar-producto" value="" onChange={(e) => elegirProducto(e.target.value)}>
+              <option value="">Seleccione un producto para agregarlo</option>
+              {productosParaElegir.map((p) => (
+                <option key={p.id} value={p.id} disabled={p.stock === 0}>
+                  {p.nombre} · {colones(p.precio)} · {p.stock === 0 ? 'Agotado' : `stock ${p.stock}`}
+                </option>
+              ))}
+            </select>
+          </div>
+          {lineasProducto.length > 0 && (
+            <table className="tabla">
+              <thead>
+                <tr><th scope="col">Producto</th><th scope="col">Precio</th><th scope="col">Cantidad</th><th scope="col">Subtotal</th><th scope="col"><span className="texto-suave">Quitar</span></th></tr>
+              </thead>
+              <tbody>
+                {lineasProducto.map((l) => {
+                  const p = producto(l.id);
+                  return (
+                    <tr key={l.id}>
+                      <td>{p.nombre}<br /><span className="texto-suave">Stock: {p.stock}</span></td>
+                      <td>{colones(p.precio)}</td>
+                      <td>
+                        <input type="number" inputMode="numeric" min="1" max={p.stock} step="1" style={{ width: '6em' }}
+                          aria-label={`Cantidad de ${p.nombre}`} value={l.cantidad} onKeyDown={bloquearNoEnteros}
+                          onChange={(e) => cambio(() => cambiarCantidad(l.id, e.target.value))} />
+                      </td>
+                      <td>{colones(subtotalProducto(l))}</td>
+                      <td>
+                        <Boton variante="secundario" onClick={() => cambio(() => setLineasProducto(lineasProducto.filter((x) => x.id !== l.id)))}>
+                          Quitar
+                        </Boton>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </fieldset>
 
         <fieldset>
           <legend>Servicios</legend>
-          {lineasServicio.map((l) => (
-            <div className="campo" key={l.id}>
-              <label htmlFor={`precio-${l.id}`}>{servicio(l.id).nombre}: precio final cobrado (₡)</label>
-              <input id={`precio-${l.id}`} type="number" min="0.01" step="0.01" style={{ width: '9em' }} value={l.precioFinal}
-                onChange={(e) => setLineasServicio(lineasServicio.map((x) => (x.id === l.id ? { ...x, precioFinal: e.target.value } : x)))} />{' '}
-              <Boton variante="secundario" onClick={() => setLineasServicio(lineasServicio.filter((x) => x.id !== l.id))}>Quitar</Boton>
-            </div>
-          ))}
-          <Selector id="agregar-servicio" etiqueta="Agregar servicio" valor={servicioElegido} alCambiar={setServicioElegido} vacio="Seleccione un servicio"
-            opciones={servicios.filter((s) => !lineasServicio.some((l) => l.id === s.id))
-              .map((s) => [s.id, `${s.nombre} · aprox. ${colones(s.precioAproximado)}`])} />
-          <Boton variante="secundario" onClick={agregarServicio} disabled={!servicioElegido}>Agregar servicio</Boton>
+          <div className="campo">
+            <label htmlFor="agregar-servicio">Agregar servicio</label>
+            <select id="agregar-servicio" value="" onChange={(e) => elegirServicio(e.target.value)}>
+              <option value="">Seleccione un servicio para agregarlo</option>
+              {serviciosParaElegir.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+          </div>
+          {lineasServicio.length > 0 && (
+            <table className="tabla">
+              <thead>
+                <tr><th scope="col">Servicio</th><th scope="col">Precio final cobrado (₡)</th><th scope="col"><span className="texto-suave">Quitar</span></th></tr>
+              </thead>
+              <tbody>
+                {lineasServicio.map((l) => (
+                  <tr key={l.id}>
+                    <td>{servicio(l.id).nombre}</td>
+                    <td>
+                      <input type="text" inputMode="numeric" placeholder="Ej. 40000" style={{ width: '9em' }}
+                        aria-label={`Precio final de ${servicio(l.id).nombre}`} value={l.precioFinal} onKeyDown={bloquearNoEnteros}
+                        onChange={(e) => cambio(() => setLineasServicio(lineasServicio.map((x) =>
+                          (x.id === l.id ? { ...x, precioFinal: enteroDe(e.target.value) } : x))))} />
+                    </td>
+                    <td>
+                      <Boton variante="secundario" onClick={() => cambio(() => setLineasServicio(lineasServicio.filter((x) => x.id !== l.id)))}>
+                        Quitar
+                      </Boton>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </fieldset>
 
         <p><strong>Total: {colones(Math.round(total * 100) / 100)}</strong></p>
-        <Selector id="metodo-pago" etiqueta="Método de pago *" valor={metodoPago} alCambiar={setMetodoPago} vacio="Seleccione"
+        <Selector id="metodo-pago" etiqueta="Método de pago *" valor={metodoPago} alCambiar={(v) => cambio(() => setMetodoPago(v))} vacio="Seleccione"
           opciones={METODOS.map((m) => [m, m])} />
         <div className="campo">
           <label>
-            <input type="checkbox" checked={pagoConfirmado} onChange={(e) => setPagoConfirmado(e.target.checked)} />{' '}
+            <input type="checkbox" checked={pagoConfirmado} onChange={(e) => cambio(() => setPagoConfirmado(e.target.checked))} />{' '}
             Confirmo que recibí el pago (el sistema no procesa pagos)
           </label>
         </div>
