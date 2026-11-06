@@ -7,6 +7,7 @@
 //   /api/publico/<modulo>    funciones públicas, sin sesión
 //   /api/admin/<modulo>      funciones administrativas, exigen sesión (AC-01)
 import { Router } from 'express';
+import { config } from './config.js';
 import { requiereAdministradora } from '../shared/auth.js';
 import { responderOk } from '../shared/respuesta.js';
 import { probarConexion } from '../shared/db.js';
@@ -27,7 +28,8 @@ rutasApi.get('/salud', async (req, res) => {
     const info = await probarConexion();
     baseDatos = { conectada: true, nombre: info.baseDatos };
   } catch (error) {
-    baseDatos = { conectada: false, mensaje: error.message };
+    // En producción no se muestra el detalle técnico (servidor, usuario) al público (AC-03).
+    baseDatos = { conectada: false, mensaje: config.enProduccion ? 'Base de datos no disponible.' : error.message };
   }
   responderOk(res, { api: 'activa', baseDatos });
 });

@@ -97,6 +97,7 @@ docs/               contratos, decisiones, diccionario de datos y matriz de prue
 - [Decisiones](docs/DECISIONES.md): acuerdos del equipo y diferencias con el ERS.
 - [Diccionario de datos](docs/DICCIONARIO_DATOS.md): tablas, columnas y reglas.
 - [Matriz de requerimientos y pruebas](docs/MATRIZ_RF_PRUEBAS.md): los 34 RF con sus claves de Jira y su estado.
+- [Requisitos no funcionales](docs/REQUISITOS_NO_FUNCIONALES.md): cómo se cumplen PR-01 a PR-07 y AC-01 a AC-13, con evidencia y mediciones.
 - [Instrucciones para agentes de IA](AGENTS.md).
 
 ## Seguridad
