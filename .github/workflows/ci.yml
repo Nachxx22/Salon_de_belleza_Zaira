@@ -74,3 +74,5 @@ jobs:
         run: npm run db:verificar
       - name: Pruebas de punta a punta (acceso, servicios, citas, solicitudes, agenda, proveedores, productos y ventas)
         run: npm run api:integracion
+      - name: Desempeño con 10 usuarios a la vez (PR-01 a PR-06)
+        run: npm run api:rendimiento

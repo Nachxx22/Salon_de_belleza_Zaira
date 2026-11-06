@@ -129,6 +129,7 @@ a {
 
 .panel__contenido {
   padding: 2rem clamp(1rem, 3vw, 2.5rem);
+  min-width: 0; /* deja que el contenido se ajuste al ancho de la pantalla (AC-06) */
 }
 
 @media (max-width: 760px) {
@@ -141,6 +142,7 @@ a {
   }
   .panel__menu .navegacion {
     flex-direction: row;
+    flex-wrap: wrap;
   }
 }
 
@@ -274,6 +276,13 @@ a {
 
 .texto-suave {
   color: var(--color-texto-suave);
+}
+
+/* Las tablas anchas se desplazan dentro de su contenedor y no ensanchan la página
+   en teléfonos (AC-06). El contenedor recibe el foco del teclado (WCAG 2.1.1). */
+.tabla-contenedor {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .tabla {

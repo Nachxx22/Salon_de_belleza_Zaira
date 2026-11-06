@@ -20,6 +20,7 @@
     "db:admin": "npm run db:admin -w backend",
     "db:verificar": "npm run db:verificar -w backend",
     "api:integracion": "npm run api:integracion -w backend",
+    "api:rendimiento": "npm run api:rendimiento -w backend",
     "db:preparar": "npm run db:migrar && npm run db:semillas"
   },
   "devDependencies": {

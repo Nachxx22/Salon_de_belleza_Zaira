@@ -62,3 +62,16 @@ test('una ruta inexistente responde 404 con el formato de error común', async (
   assert.equal(cuerpo.ok, false);
   assert.equal(cuerpo.codigo, 'RUTA_NO_ENCONTRADA');
 });
+
+test('el API envía cabeceras de seguridad y no revela la tecnología del servidor (AC-02, AC-03)', async () => {
+  const respuesta = await fetch(`${base}/auth/sesion`);
+  assert.equal(respuesta.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(respuesta.headers.get('x-frame-options'), 'DENY');
+  assert.equal(respuesta.headers.get('x-powered-by'), null);
+});
+
+test('las rutas públicas de citas no aceptan el teléfono en la URL (Ley 8968, AC-03)', async () => {
+  // La consulta de una cita va por POST con el teléfono en el cuerpo; por GET no existe.
+  const respuesta = await fetch(`${base}/publico/citas/consulta?codigo=C-AAAA2222&telefono=88887777`);
+  assert.equal(respuesta.status, 404);
+});

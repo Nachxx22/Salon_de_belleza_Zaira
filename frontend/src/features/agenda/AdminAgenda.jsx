@@ -171,7 +171,7 @@ export default function AdminAgenda() {
         <>
           <h2>Horarios regulares</h2>
           {agenda.horarios.length === 0 ? <p className="texto-suave">No existen horarios regulares registrados.</p> : (
-            <table className="tabla">
+            <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal"><table className="tabla">
               <thead><tr><th scope="col">Día</th><th scope="col">Inicio</th><th scope="col">Fin</th><th scope="col">Acciones</th></tr></thead>
               <tbody>
                 {agenda.horarios.map((h) => (
@@ -181,12 +181,12 @@ export default function AdminAgenda() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
 
           <h2>Bloqueos de agenda</h2>
           {agenda.bloqueos.length === 0 ? <p className="texto-suave">No existen bloqueos de agenda registrados.</p> : (
-            <table className="tabla">
+            <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal"><table className="tabla">
               <thead><tr><th scope="col">Fecha</th><th scope="col">Inicio</th><th scope="col">Fin</th><th scope="col">Acciones</th></tr></thead>
               <tbody>
                 {agenda.bloqueos.map((b) => (
@@ -196,7 +196,7 @@ export default function AdminAgenda() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </>
       )}

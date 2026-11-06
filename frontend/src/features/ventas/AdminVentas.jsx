@@ -199,7 +199,7 @@ function FormularioVenta({ original = null, alTerminar, alCancelar }) {
             </select>
           </div>
           {lineasProducto.length > 0 && (
-            <table className="tabla">
+            <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal"><table className="tabla">
               <thead>
                 <tr><th scope="col">Producto</th><th scope="col">Precio</th><th scope="col">Cantidad</th><th scope="col">Subtotal</th><th scope="col"><span className="texto-suave">Quitar</span></th></tr>
               </thead>
@@ -226,7 +226,7 @@ function FormularioVenta({ original = null, alTerminar, alCancelar }) {
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
         </fieldset>
 
@@ -242,7 +242,7 @@ function FormularioVenta({ original = null, alTerminar, alCancelar }) {
             </select>
           </div>
           {lineasServicio.length > 0 && (
-            <table className="tabla">
+            <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal"><table className="tabla">
               <thead>
                 <tr><th scope="col">Servicio</th><th scope="col">Precio aproximado</th><th scope="col">Precio final cobrado (₡)</th><th scope="col"><span className="texto-suave">Quitar</span></th></tr>
               </thead>
@@ -269,7 +269,7 @@ function FormularioVenta({ original = null, alTerminar, alCancelar }) {
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
         </fieldset>
 
@@ -496,7 +496,7 @@ export default function AdminVentas() {
         <p>{hayFiltros ? 'No se encontraron ventas con esos filtros.' : 'Todavía no existen ventas para consultar.'}</p>
       )}
       {ventas && ventas.length > 0 && (
-        <table className="tabla">
+        <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal"><table className="tabla">
           <thead>
             <tr>
               <th scope="col">Código</th>
@@ -521,7 +521,7 @@ export default function AdminVentas() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </section>
   );

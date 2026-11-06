@@ -297,7 +297,7 @@ export default function AdminCitas() {
       )}
 
       {citas && citas.length > 0 && (
-        <table className="tabla">
+        <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal"><table className="tabla">
           <thead>
             <tr>
               <th scope="col">Código</th>
@@ -322,7 +322,7 @@ export default function AdminCitas() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </section>
   );

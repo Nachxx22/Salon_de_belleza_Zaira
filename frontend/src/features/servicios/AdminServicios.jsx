@@ -209,7 +209,7 @@ export default function AdminServicios() {
       )}
 
       {servicios && servicios.length > 0 && (
-        <div className="tabla-contenedor">
+        <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal">
           <table className="tabla">
             <caption className="texto-suave">Servicios activos y desactivados</caption>
             <thead>

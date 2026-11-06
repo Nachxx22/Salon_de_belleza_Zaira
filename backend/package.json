@@ -16,7 +16,8 @@
     "db:semillas": "node scripts/db-semillas.js",
     "db:admin": "node scripts/crear-admin.js",
     "db:verificar": "node scripts/db-verificar.js",
-    "api:integracion": "node scripts/api-integracion.js"
+    "api:integracion": "node scripts/api-integracion.js",
+    "api:rendimiento": "node scripts/api-rendimiento.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -182,7 +182,7 @@ export default function AdminProveedores() {
         <p>{buscado ? 'No se encontraron proveedores con ese criterio.' : 'Todavía no existen proveedores registrados.'}</p>
       )}
       {proveedores && proveedores.length > 0 && (
-        <table className="tabla">
+        <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal"><table className="tabla">
           <thead>
             <tr>
               <th scope="col">Nombre</th>
@@ -203,7 +203,7 @@ export default function AdminProveedores() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </section>
   );

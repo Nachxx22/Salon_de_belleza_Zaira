@@ -120,7 +120,7 @@ export default function AdminSolicitudes() {
       <Mensaje tipo="error">{error}</Mensaje>
       {solicitudes && solicitudes.length === 0 && <p>No existen solicitudes pendientes por procesar.</p>}
       {solicitudes && solicitudes.length > 0 && (
-        <table className="tabla">
+        <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal"><table className="tabla">
           <thead>
             <tr>
               <th scope="col">Tipo</th>
@@ -143,7 +143,7 @@ export default function AdminSolicitudes() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </section>
   );

@@ -46,3 +46,20 @@ test('no hay SQL ni acceso directo a la base fuera de los archivos .datos.js (D-
   }
   assert.deepEqual(problemas, [], `El SQL va en <modulo>.datos.js:\n${problemas.join('\n')}`);
 });
+
+// AC-02 y AC-10: React nunca accede a la base de datos; todo pasa por el API.
+test('el frontend no tiene forma de conectarse a SQL Server (AC-02, AC-10)', () => {
+  const raiz = path.resolve(carpetaModulos, '..', '..', '..');
+  const paquete = JSON.parse(readFileSync(path.join(raiz, 'frontend', 'package.json'), 'utf8'));
+  const dependencias = Object.keys({ ...paquete.dependencies, ...paquete.devDependencies });
+  assert.deepEqual(dependencias.filter((d) => ['mssql', 'tedious', 'msnodesqlv8'].includes(d)), []);
+
+  const fuentes = archivosJs(path.join(raiz, 'frontend', 'src'))
+    .concat(readdirSync(path.join(raiz, 'frontend', 'src'), { recursive: true })
+      .filter((f) => String(f).endsWith('.jsx')).map((f) => path.join(raiz, 'frontend', 'src', String(f))));
+  const problemas = fuentes.filter((ruta) => {
+    const codigo = sinComentarios(readFileSync(ruta, 'utf8'));
+    return /from\s+['"](mssql|tedious)['"]|backend\/src|\bdbo\.\w+|\bSELECT\b[\s\S]{0,200}?\bFROM\b/.test(codigo);
+  });
+  assert.deepEqual(problemas.map((r) => path.relative(raiz, r)), [], 'El frontend solo usa el API (shared/api/cliente.js).');
+});

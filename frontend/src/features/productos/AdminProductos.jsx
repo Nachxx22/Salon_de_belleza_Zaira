@@ -25,7 +25,7 @@ function Inventario({ alVolver }) {
       <Mensaje tipo="error">{error}</Mensaje>
       {filas && filas.length === 0 && <p>No hay productos registrados para consultar.</p>}
       {filas && filas.length > 0 && (
-        <table className="tabla">
+        <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal"><table className="tabla">
           <thead>
             <tr><th scope="col">Producto</th><th scope="col">Marca</th><th scope="col">Stock</th><th scope="col">Disponibilidad</th><th scope="col">Estado</th></tr>
           </thead>
@@ -40,7 +40,7 @@ function Inventario({ alVolver }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </section>
   );
@@ -214,7 +214,7 @@ export default function AdminProductos() {
       {avisos}
       {productos && productos.length === 0 && <p>Todavía no existen productos registrados.</p>}
       {productos && productos.length > 0 && (
-        <table className="tabla">
+        <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla con desplazamiento horizontal"><table className="tabla">
           <thead>
             <tr>
               <th scope="col">Producto</th>
@@ -266,7 +266,7 @@ export default function AdminProductos() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </section>
   );
