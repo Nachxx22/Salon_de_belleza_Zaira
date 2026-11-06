@@ -67,3 +67,5 @@ Se hace cuando Citas tenga crear cita (MCA-12 o MCA-01) en `main`. Con una base 
 5. **Servicio desactivado (MS-04, criterio 3):** desactivar el servicio. Ya no se puede elegir para una cita nueva, y la cita del paso 3 sigue mostrándolo.
 6. **Reactivar (EXT-MS-R01, extensión):** reactivarlo; vuelve a poder elegirse.
 7. Anotar el resultado en `MATRIZ_RF_PRUEBAS.md` y corregir en el momento lo que no calce con el contrato.
+
+Los pasos 1 a 6 también están automatizados: `npm run api:integracion` los ejecuta contra SQL Server y GitHub Actions lo corre en cada push. Deja datos de prueba, así que úsenlo en `ZairaIntegracion` o en una base de prueba, no en la de la demo.

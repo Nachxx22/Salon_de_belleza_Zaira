@@ -15,7 +15,8 @@
     "db:migrar": "node scripts/db-migrar.js",
     "db:semillas": "node scripts/db-semillas.js",
     "db:admin": "node scripts/crear-admin.js",
-    "db:verificar": "node scripts/db-verificar.js"
+    "db:verificar": "node scripts/db-verificar.js",
+    "api:integracion": "node scripts/api-integracion.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

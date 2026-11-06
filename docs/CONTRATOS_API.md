@@ -104,6 +104,38 @@ Forma de un servicio en las respuestas:
 - Un servicio `Desactivado` no se ofrece para citas nuevas, pero sigue apareciendo en citas y ventas anteriores.
 - No se renombran ni eliminan estos campos sin acuerdo de los dos.
 
+## Citas (Integración 1: MCA-04 y MCA-12) — Persona A
+
+Programado por Ignacio a pedido del equipo para la Integración 1 (D-019); el módulo sigue siendo de Persona A.
+
+| Método | Ruta | Requerimiento | Entrada | Respuesta |
+|---|---|---|---|---|
+| GET | `/api/admin/citas` | MCA-04 | `?fecha=YYYY-MM-DD&estado=Confirmada&cliente=texto` (todos opcionales; `cliente` busca en nombre o teléfono) | `200 [resumen]`; lista vacía si no hay resultados |
+| GET | `/api/admin/citas/:id` | MCA-04 | — | `200 detalle`; `404 NO_ENCONTRADO` |
+| GET | `/api/admin/citas/disponibilidad` | MCA-12 | `?fecha=YYYY-MM-DD&servicios=1,2` | `200 { fecha, duracionTotalMinutos, horarios: ["09:00", "09:30", ...] }` |
+| GET | `/api/admin/citas/clientes` | MCA-12 | `?telefono=8888-7777` | `200 cliente` o `200 null` si no existe |
+| POST | `/api/admin/citas` | MCA-12 | ver abajo | `201 detalle`, estado `Confirmada`; no crea `SolicitudCita` |
+
+Cuerpo de `POST /api/admin/citas`:
+
+```json
+{
+  "cliente": { "telefono": "8888-7777", "nombre": "Ana Mora", "correoElectronico": "" },
+  "servicios": [1, 3],
+  "fecha": "2026-11-16",
+  "hora": "09:30",
+  "esDomicilio": false,
+  "direccion": null,
+  "observaciones": null
+}
+```
+
+- Si ya existe un cliente con ese teléfono, la cita se asocia a él y no se cambian sus datos; si no, se crea en la misma transacción.
+- Resumen (listado): `{ id, codigo, fecha, hora, horaFin, duracionMinutos, estado, esDomicilio, cliente: { nombre, telefono }, servicios: "Corte, Tinte" }`.
+- Detalle: `{ id, codigo, fecha, hora, horaFin, duracionMinutos, estado, esDomicilio, direccion, observaciones, motivoCancelacion, cliente: { id, nombre, telefono, correoElectronico }, servicios: [{ id, nombre, estado, duracionAplicadaMinutos }] }`.
+- Códigos de negocio: `409 HORARIO_OCUPADO` («El horario seleccionado ya no está disponible. Seleccione otro horario.»), `409 SERVICIO_NO_DISPONIBLE`, `409 DOMICILIO_NO_DISPONIBLE`, `400 FECHA_PASADA`.
+- La disponibilidad se calcula con un solo algoritmo en el servidor (`horariosDisponibles` en `citas.logica.js`): horas cada 30 minutos dentro del horario regular, donde cabe la duración total, sin chocar con bloqueos, citas `Pendiente` o `Confirmada` ni reprogramaciones `Pendiente`. Al registrar se vuelve a verificar con el bloqueo `agenda` tomado (D-016).
+
 ## Pendientes de definir
 
 Cada responsable completa la tabla de rutas de su módulo antes de programarlo. Las rutas propuestas están en el comentario inicial de cada archivo `backend/src/modules/<modulo>/<modulo>.rutas.js`.

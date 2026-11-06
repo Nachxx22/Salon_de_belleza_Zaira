@@ -20,7 +20,7 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 |---|---|---|---|---|---|---|---|
 | MS-01 | Registrar servicio | Alta | SCRUM-39 | SCRUM-93 | P0 | probado | Pruebas automáticas de validación y prueba manual con SQL Server (6 nov): registrar, datos inválidos, cancelar. |
 | MS-02 | Consultar servicio (Cliente) | Alta | SCRUM-40 | SCRUM-94 | P0 | probado | Catálogo con SQL Server: solo servicios activos, aviso de precio aproximado. |
-| MS-03 | Actualizar servicio | Alta | SCRUM-41 | SCRUM-95 | P0 | probado | Actualización probada con SQL Server. Falta criterio 3 (citas existentes conservan la duración): se prueba en la Integración 1 con Citas. |
+| MS-03 | Actualizar servicio | Alta | SCRUM-41 | SCRUM-95 | P0 | probado | Actualización probada con SQL Server. Criterio 3 (citas existentes conservan la duración) probado de punta a punta en `npm run api:integracion`. |
 | MS-04 | Desactivar servicio | Media | SCRUM-42 | SCRUM-96 | P0 | probado | Baja lógica con confirmación, probada con SQL Server: sale del catálogo y queda en el listado administrativo. |
 | MS-05 | Consultar servicios (Administrador) | Alta | SCRUM-43 | SCRUM-97 | P0 | probado | Listado administrativo con activos y desactivados, probado con SQL Server. |
 | EXT-MS-R01 | Reactivar servicio (**extensión acordada, no está en el ERS**; D-018) | — | — | — | P0 | probado | Reactivar con confirmación, probado con SQL Server: vuelve al catálogo. |
@@ -61,7 +61,7 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 | MCA-01 | Crear cita (cliente) | Alta | SCRUM-11 | SCRUM-65 | P1 | pendiente | |
 | MCA-02 | Reprogramar cita (cliente) | Alta | SCRUM-12 | SCRUM-66 | P1 | pendiente | |
 | MCA-03 | Cancelar cita (cliente) | Alta | SCRUM-13 | SCRUM-67 | P1 | pendiente | |
-| MCA-04 | Consultar citas | Alta | SCRUM-14 | SCRUM-68 | P0 | pendiente | |
+| MCA-04 | Consultar citas | Alta | SCRUM-14 | SCRUM-68 | P0 | integrado | Programado para la Integración 1 (D-019). Filtros por fecha, estado y cliente; detalle. Prueba de punta a punta con SQL Server en `npm run api:integracion` (CI). Falta revisión de Persona A y prueba en pantalla. |
 | MCA-05 | Consultar solicitudes pendientes | Alta | SCRUM-15 | SCRUM-69 | P1 | pendiente | |
 | MCA-06 | Procesar solicitud pendiente | Alta | SCRUM-16 | SCRUM-70 | P1 | pendiente | |
 | MCA-07 | Marcar cita como completada | Alta | SCRUM-17 | SCRUM-71 | P1 | pendiente | |
@@ -69,7 +69,7 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 | MCA-09 | Consultar configuración de agenda | Media | SCRUM-19 | SCRUM-73 | P0 | pendiente | |
 | MCA-10 | Modificar configuración de agenda | Media | SCRUM-20 | SCRUM-74 | P0 | pendiente | |
 | MCA-11 | Eliminar configuración de agenda | Media | SCRUM-21 | SCRUM-75 | P0 | pendiente | |
-| MCA-12 | Crear cita (Administrador) | Media | SCRUM-22 | SCRUM-76 | P0 | pendiente | |
+| MCA-12 | Crear cita (Administrador) | Media | SCRUM-22 | SCRUM-76 | P0 | integrado | Programado para la Integración 1 (D-019). Pruebas del algoritmo de disponibilidad y de punta a punta con SQL Server (horario ocupado, cliente nuevo y existente, domicilio, sin servicios). Falta revisión de Persona A y prueba en pantalla. |
 | MCA-13 | Reprogramar cita (Administrador) | Media | SCRUM-23 | SCRUM-77 | P0 | pendiente | |
 | MCA-14 | Cancelar cita (Administrador) | Media | SCRUM-24 | SCRUM-78 | P0 | pendiente | |
 

@@ -105,3 +105,10 @@ Solo los archivos `<modulo>.datos.js` escriben SQL y usan `consulta` o `enTransa
 ## D-018 — EXT-MS-R01 Reactivar servicio (5 nov 2026)
 
 **Extensión acordada, no es parte del ERS.** El ERS solo define desactivar un servicio (MS-04) y MS-03 no cambia el estado, así que un servicio desactivado por error no se podía volver a ofrecer. Se agrega `PATCH /api/admin/servicios/:id/reactivar`, que cambia `Estado` de `Desactivado` a `Activo` con confirmación en la pantalla administrativa. El servicio vuelve al catálogo público y a citas nuevas; las citas y ventas anteriores no cambian. Si ya estaba activo, no repite la operación. No necesita cambios en la base.
+
+## D-019 — Citas para la Integración 1, código de cita y disponibilidad (6 nov 2026)
+
+- **Quién:** por pedido del equipo, Ignacio programó en el módulo de Persona A lo mínimo para la Integración 1: MCA-12 Crear cita (Administrador), MCA-04 Consultar citas, la disponibilidad y `clientes.datos.js`. El módulo sigue siendo de Persona A: ella lo revisa, lo ajusta y continúa con MCA-01 a MCA-03, MCA-05 a MCA-07, MCA-13 y MCA-14.
+- **Código de cita:** `C-` seguido de 8 caracteres al azar (`crypto.randomInt`) de un alfabeto sin `0`, `O`, `1` ni `I`, para dictarlo por teléfono sin confusiones (por ejemplo `C-K7MQ2XPA`). Hay más de un billón de combinaciones, así que no se puede adivinar junto con un teléfono.
+- **Disponibilidad:** un solo algoritmo en `citas.logica.js` (`horariosDisponibles`). Ofrece horas cada 30 minutos dentro del horario regular del día (los tramos que se tocan se unen), donde cabe la duración total, sin chocar con bloqueos, citas `Pendiente` o `Confirmada` ni reprogramaciones `Pendiente`. Para la administradora, el mismo día solo ofrece horas que todavía no han pasado y rechaza fechas pasadas (`FECHA_PASADA`). La anticipación mínima del cliente (MCA-01) se agregará con la ruta pública.
+- **Transacción:** `citas.datos.js` (`registrarCita`) toma el bloqueo `agenda`, vuelve a leer la agenda, pregunta a la lógica si la hora sigue libre y registra cliente, cita y servicios juntos (D-016, D-017).

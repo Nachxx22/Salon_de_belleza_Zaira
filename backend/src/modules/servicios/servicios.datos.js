@@ -44,6 +44,17 @@ export async function obtenerPorId(id) {
   return filas[0] ? aServicio(filas[0]) : null;
 }
 
+// Para Citas (MCA-01, MCA-12): varios servicios por id, activos o no.
+// Citas decide qué hacer si alguno no existe o está desactivado.
+export async function obtenerVariosPorId(ids) {
+  if (ids.length === 0) return [];
+  // Un parámetro por id: nunca se concatena el valor en el SQL.
+  const parametros = Object.fromEntries(ids.map((id, i) => [`id${i}`, id]));
+  const lista = ids.map((_, i) => `@id${i}`).join(', ');
+  const { filas } = await consulta(`SELECT ${COLUMNAS} FROM dbo.Servicio WHERE Id IN (${lista})`, parametros);
+  return filas.map(aServicio);
+}
+
 // MS-01: el servicio nace Activo (lo pone la columna por defecto).
 export async function insertar(servicio) {
   const { filas } = await consulta(
