@@ -1,4 +1,5 @@
-# Verificación automática en cada push a main: pruebas del backend y compilación del frontend.
+# Verificación automática en cada push a main: pruebas del backend, compilación
+# del frontend y el script de la base aplicado en un SQL Server 2022 real.
 # El resultado aparece en GitHub y, por la conexión con Jira, en el panel Desarrollo.
 name: Verificación
 
@@ -9,6 +10,7 @@ on:
 
 jobs:
   verificar:
+    name: Pruebas y compilación
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,3 +21,54 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+
+  base-de-datos:
+    name: Base de datos en SQL Server 2022
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      # SQL Server temporal que solo existe durante esta prueba. Las claves se
+      # generan al momento, se ocultan en el registro y nunca se suben al repositorio.
+      - name: Iniciar SQL Server 2022 y crear backend/.env de prueba
+        run: |
+          CLAVE_SQL="Ci$(openssl rand -hex 12)!"
+          CLAVE_ADMIN="ci-$(openssl rand -hex 8)"
+          echo "::add-mask::$CLAVE_SQL"
+          echo "::add-mask::$CLAVE_ADMIN"
+          docker run -d --name sqlserver -e ACCEPT_EULA=Y -e "MSSQL_SA_PASSWORD=$CLAVE_SQL" \
+            -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest
+          for intento in $(seq 1 60); do
+            if docker logs sqlserver 2>&1 | grep -q 'SQL Server is now ready for client connections'; then break; fi
+            sleep 3
+          done
+          sleep 5
+          {
+            echo "SESSION_SECRET=ci-$(openssl rand -hex 16)"
+            echo "DB_SERVER=localhost"
+            echo "DB_PORT=1433"
+            echo "DB_NAME=ZairaCI"
+            echo "DB_USER=sa"
+            echo "DB_PASSWORD=$CLAVE_SQL"
+            echo "DB_ENCRYPT=true"
+            echo "DB_TRUST_SERVER_CERTIFICATE=true"
+            echo "ADMIN_USUARIO=admin"
+            echo "ADMIN_CONTRASENA=$CLAVE_ADMIN"
+          } > backend/.env
+
+      - name: Aplicar migraciones (dos veces; la segunda no debe cambiar nada)
+        run: |
+          npm run db:migrar
+          npm run db:migrar
+      - name: Cargar datos de prueba (dos veces; no deben duplicarse)
+        run: |
+          npm run db:semillas
+          npm run db:semillas
+      - run: npm run db:admin
+      - name: Verificar tablas, restricciones, hora de Costa Rica y login
+        run: npm run db:verificar

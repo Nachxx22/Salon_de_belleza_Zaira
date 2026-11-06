@@ -16,8 +16,8 @@ export async function validarCredenciales(usuario, contrasena) {
     throw new ErrorApp(400, 'DATOS_INVALIDOS', 'El usuario y la contraseña son obligatorios.');
   }
   const cuenta = await buscarPorUsuario(usuario.trim());
-  const coincide = await bcrypt.compare(contrasena, cuenta?.Contrasena ?? HASH_DE_RELLENO);
+  const coincide = await bcrypt.compare(contrasena, cuenta?.ContrasenaHash ?? HASH_DE_RELLENO);
   const valida = Boolean(cuenta) && coincide;
   if (!valida) throw new ErrorApp(401, 'CREDENCIALES_INVALIDAS', MENSAJE_CREDENCIALES);
-  return { idAdmin: cuenta.IdAdmin, usuario: cuenta.Usuario };
+  return { idAdmin: cuenta.Id, usuario: cuenta.Usuario };
 }

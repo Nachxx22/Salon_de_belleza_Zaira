@@ -19,19 +19,19 @@ try {
   const hash = await bcrypt.hash(contrasena, 10);
   const pool = await conectar();
   try {
-    const { recordset } = await pool.request().query('SELECT TOP (1) IdAdmin FROM dbo.Usuario_Admin ORDER BY IdAdmin');
+    const { recordset } = await pool.request().query('SELECT TOP (1) Id FROM dbo.Administradora ORDER BY Id');
     if (recordset.length === 0) {
       await pool.request()
         .input('usuario', sql.NVarChar(50), usuario)
         .input('hash', sql.NVarChar(100), hash)
-        .query('INSERT INTO dbo.Usuario_Admin (Usuario, Contrasena) VALUES (@usuario, @hash)');
+        .query('INSERT INTO dbo.Administradora (Usuario, ContrasenaHash) VALUES (@usuario, @hash)');
       console.log(`Cuenta de administradora "${usuario}" creada en ${config.db.database}.`);
     } else {
       await pool.request()
-        .input('id', sql.Int, recordset[0].IdAdmin)
+        .input('id', sql.Int, recordset[0].Id)
         .input('usuario', sql.NVarChar(50), usuario)
         .input('hash', sql.NVarChar(100), hash)
-        .query('UPDATE dbo.Usuario_Admin SET Usuario = @usuario, Contrasena = @hash WHERE IdAdmin = @id');
+        .query('UPDATE dbo.Administradora SET Usuario = @usuario, ContrasenaHash = @hash WHERE Id = @id');
       console.log(`Cuenta de administradora actualizada: "${usuario}" en ${config.db.database}.`);
     }
   } finally {

@@ -42,18 +42,20 @@ export function montoPositivo(valor, campo) {
   return numero;
 }
 
-// Teléfono de Costa Rica: 8 dígitos; se aceptan espacios o guiones al escribirlo.
+// Teléfono: exactamente 8 dígitos, sin código de país (D-016). Se aceptan
+// espacios o guiones al escribirlo y se guardan solo los 8 dígitos seguidos,
+// para que la restricción de teléfono único compare siempre lo mismo.
 export function telefono(valor, campo = 'teléfono') {
   const texto = textoRequerido(valor, campo, { max: 20 });
   const digitos = texto.replace(/[\s-]/g, '');
   if (!/^\d{8}$/.test(digitos)) {
     throw errores.datosInvalidos(`El ${campo} debe tener 8 dígitos.`, { campo });
   }
-  return `${digitos.slice(0, 4)}-${digitos.slice(4)}`;
+  return digitos;
 }
 
 export function correo(valor, campo = 'correo electrónico') {
-  const texto = textoRequerido(valor, campo, { max: 150 }).toLowerCase();
+  const texto = textoRequerido(valor, campo, { max: 254 }).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(texto)) {
     throw errores.datosInvalidos(`El ${campo} no tiene un formato válido.`, { campo });
   }

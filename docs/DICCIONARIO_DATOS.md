@@ -1,209 +1,211 @@
 # Diccionario de datos
 
-Generado a partir de `database/migrations/0001_base.sql` y `0002_ext_mv_u01_revision_venta.sql`. Si una migración nueva cambia una tabla, actualicen también este archivo.
+Generado a partir de `database/migrations/0001_base.sql` (13 tablas) y `0002_ext_mv_u01_revision_venta.sql` (RevisionVenta). Total: 14 tablas. Si una migración nueva cambia una tabla, actualicen también este archivo.
 
 - **Persona A:** Citas y Agenda. **Persona B (Ignacio):** acceso, servicios, proveedores, productos y ventas.
-- Montos en colones. Fechas y horas en hora local de Costa Rica.
-- Los nombres de tablas y columnas siguen el diagrama de entidades de la sección 3.4 del ERS (ver `DECISIONES.md`, D-002).
+- Modelo aprobado por los dos el 5 nov 2026: nombres del texto de la sección 3.4.2 del ERS, PK `Id` y FK `<Tabla>Id` (`DECISIONES.md`, D-013).
+- Montos en colones. Las fechas y horas de registro se guardan en hora de Costa Rica (UTC−6), sin depender de la zona de la computadora (D-015).
+- Estados guardados sin tilde; la interfaz los muestra con tilde (tabla en `CONTRATOS_API.md`). Ninguna FK borra en cascada.
 
-## Usuario_Admin
+## Administradora
 
-**Dueño:** Persona B (Ignacio). Cuenta única de la administradora (MA-01, MA-02). Contrasena guarda el hash bcrypt.
+**Dueño:** Persona B (Ignacio). Cuenta única de la administradora (MA-01, MA-02). ContrasenaHash guarda el hash bcrypt, nunca la contraseña.
 
 | Columna | Tipo | Nulo | Notas |
 |---|---|---|---|
-| IdAdmin | INT | No | Identidad; PK |
+| Id | INT | No | Identidad; PK |
 | Usuario | NVARCHAR(50) | No | Único |
-| Contrasena | NVARCHAR(100) | No |  |
+| ContrasenaHash | NVARCHAR(100) | No |  |
 
-**Reglas:** Usuario único. Solo existe una cuenta (`npm run db:admin` la crea o la actualiza).
+**Reglas:** Usuario único. Solo existe una cuenta: `npm run db:admin` la crea o la actualiza. Sin límite de intentos ni recuperación de contraseña (MA-01).
 
 ## Cliente
 
-**Dueño:** Persona A. Clientes sin cuenta; el teléfono los identifica y no se repite.
+**Dueño:** Persona A (Citas y Agenda). Clientes sin cuenta; el teléfono los identifica.
 
 | Columna | Tipo | Nulo | Notas |
 |---|---|---|---|
-| IdCliente | INT | No | Identidad; PK |
-| Nombre | NVARCHAR(100) | No |  |
+| Id | INT | No | Identidad; PK |
+| Nombre | NVARCHAR(150) | No |  |
 | Telefono | NVARCHAR(20) | No | Único |
-| Correo | NVARCHAR(150) | Sí |  |
+| CorreoElectronico | NVARCHAR(254) | Sí |  |
 
-**Reglas:** Telefono único: identifica al cliente y evita registros duplicados.
+**Reglas:** Teléfono único: 8 dígitos seguidos, sin guion ni código de país; el API quita espacios y guiones antes de guardar (D-016).
 
 ## Servicio
 
-**Dueño:** Persona B (Ignacio). Catálogo de servicios con precio aproximado (monto mínimo) y duración en minutos.
+**Dueño:** Persona B (Ignacio). Servicios del salón (MS-01 a MS-05). Lo leen Citas (CitaServicio) y Ventas (VentaServicio).
 
 | Columna | Tipo | Nulo | Notas |
 |---|---|---|---|
-| IdServicio | INT | No | Identidad; PK |
+| Id | INT | No | Identidad; PK |
 | Nombre | NVARCHAR(100) | No |  |
 | Descripcion | NVARCHAR(500) | No |  |
-| PrecioAprox | DECIMAL(10,2) | No |  |
-| DuracionMin | INT | No |  |
-| Categoria | NVARCHAR(60) | Sí |  |
-| ADomicilio | BIT | No | Por defecto: 0 |
-| Activo | BIT | No | Por defecto: 1 |
+| PrecioAproximado | DECIMAL(10,2) | No |  |
+| DuracionMinutos | INT | No |  |
+| PermiteDomicilio | BIT | No | Por defecto: 0 |
+| Estado | NVARCHAR(15) | No | Por defecto: 'Activo' |
 
-**Reglas:** PrecioAprox ≥ 0; DuracionMin > 0. Desactivar = Activo 0 (no se borra).
-
-## Cita
-
-**Dueño:** Persona A. Citas del salón. Estados: Pendiente, Confirmada, Completada, Cancelada.
-
-| Columna | Tipo | Nulo | Notas |
-|---|---|---|---|
-| IdCita | INT | No | Identidad; PK |
-| Codigo | NVARCHAR(20) | No | Único |
-| IdCliente | INT | No | FK → Cliente.IdCliente |
-| Fecha | DATE | No |  |
-| HoraInicio | TIME(0) | No |  |
-| HoraFin | TIME(0) | No |  |
-| Estado | NVARCHAR(20) | No | Por defecto: N'Pendiente' |
-| DireccionDomicilio | NVARCHAR(250) | Sí |  |
-| Observaciones | NVARCHAR(500) | Sí |  |
-| ADomicilio | BIT | No | Por defecto: 0 |
-
-**Reglas:** Codigo único; Estado en Pendiente, Confirmada, Completada o Cancelada; HoraFin > HoraInicio; si ADomicilio = 1, DireccionDomicilio es obligatoria. Cancelar = cambiar Estado (no se borra).
-
-## Cita_Servicio
-
-**Dueño:** Persona A. Servicios de cada cita con la duración aplicada al registrarla.
-
-| Columna | Tipo | Nulo | Notas |
-|---|---|---|---|
-| IdCitaServicio | INT | No | Identidad; PK |
-| IdCita | INT | No | FK → Cita.IdCita |
-| IdServicio | INT | No | FK → Servicio.IdServicio |
-| DuracionAplicadaMinutos | INT | No |  |
-
-**Reglas:** Un servicio no se repite en la misma cita; DuracionAplicadaMinutos > 0.
-
-## Horario
-
-**Dueño:** Persona A. Horario regular de atención por día de la semana (1 = lunes ... 7 = domingo).
-
-| Columna | Tipo | Nulo | Notas |
-|---|---|---|---|
-| IdHorario | INT | No | Identidad; PK |
-| DiaSemana | TINYINT | No |  |
-| HoraApertura | TIME(0) | No |  |
-| HoraCierre | TIME(0) | No |  |
-
-**Reglas:** DiaSemana entre 1 y 7; HoraCierre > HoraApertura. Las superposiciones se validan en el servidor.
-
-## BloqueoAgenda
-
-**Dueño:** Persona A. Períodos no disponibles en una fecha específica.
-
-| Columna | Tipo | Nulo | Notas |
-|---|---|---|---|
-| IdBloqueo | INT | No | Identidad; PK |
-| IdHorario | INT | Sí | FK → Horario.IdHorario |
-| Fecha | DATE | No |  |
-| HorarioInicio | TIME(0) | No |  |
-| HorarioFin | TIME(0) | No |  |
-
-**Reglas:** HorarioFin > HorarioInicio. Si se elimina el horario relacionado, IdHorario queda vacío.
-
-## SolicitudCita
-
-**Dueño:** Persona A. Solicitudes de creación, reprogramación o cancelación hechas por clientes. Estados: Pendiente, Aprobada, Rechazada.
-
-| Columna | Tipo | Nulo | Notas |
-|---|---|---|---|
-| IdSolicitud | INT | No | Identidad; PK |
-| IdCita | INT | No | FK → Cita.IdCita |
-| TipoSolicitud | NVARCHAR(20) | No |  |
-| Fecha | DATETIME2(0) | No | Por defecto: SYSDATETIME() |
-| Estado | NVARCHAR(20) | No | Por defecto: N'Pendiente' |
-| FechaPropuesta | DATE | Sí | solo reprogramación |
-| HoraPropuesta | TIME(0) | Sí | solo reprogramación |
-
-**Reglas:** TipoSolicitud en Creacion, Reprogramacion o Cancelacion; Estado en Pendiente, Aprobada o Rechazada; FechaPropuesta y HoraPropuesta solo (y obligatorias) en reprogramaciones; una cita tiene como máximo una solicitud Pendiente.
+**Reglas:** PrecioAproximado ≥ 0: un solo monto; el catálogo avisa que el precio final puede variar según el tipo y el largo del cabello (D-014). DuracionMinutos > 0. Estado Activo o Desactivado: desactivar no borra. Contrato con Citas: Id, Nombre, DuracionMinutos, PermiteDomicilio y Estado.
 
 ## Proveedor
 
-**Dueño:** Persona B (Ignacio). Proveedores de productos; teléfono y correo únicos.
+**Dueño:** Persona B (Ignacio). Proveedores de productos (MPV-01 a MPV-04).
 
 | Columna | Tipo | Nulo | Notas |
 |---|---|---|---|
-| IdProveedor | INT | No | Identidad; PK |
-| Nombre | NVARCHAR(100) | No |  |
+| Id | INT | No | Identidad; PK |
+| Nombre | NVARCHAR(150) | No |  |
 | Telefono | NVARCHAR(20) | No | Único |
-| Correo | NVARCHAR(150) | No | Único |
-| Activo | BIT | No | Por defecto: 1 |
+| CorreoElectronico | NVARCHAR(254) | No | Único |
+| Estado | NVARCHAR(15) | No | Por defecto: 'Activo' |
 
-**Reglas:** Telefono único y Correo único. Desactivar = Activo 0 (no se borra).
+**Reglas:** Teléfono (8 dígitos) y correo únicos. Estado Activo o Desactivado: un proveedor desactivado no se asocia a productos nuevos.
 
 ## Producto
 
-**Dueño:** Persona B (Ignacio). Productos con stock no negativo; Disponible si Stock > 0, Agotado si Stock = 0.
+**Dueño:** Persona B (Ignacio). Productos a la venta (MPD-01 a MPD-06).
 
 | Columna | Tipo | Nulo | Notas |
 |---|---|---|---|
-| IdProducto | INT | No | Identidad; PK |
-| IdProveedor | INT | No | FK → Proveedor.IdProveedor |
-| Nombre | NVARCHAR(100) | No |  |
-| Marca | NVARCHAR(60) | No |  |
-| Categoria | NVARCHAR(60) | No |  |
+| Id | INT | No | Identidad; PK |
+| ProveedorId | INT | No | FK → Proveedor.Id |
+| Nombre | NVARCHAR(150) | No |  |
+| Marca | NVARCHAR(100) | No |  |
+| Categoria | NVARCHAR(100) | No |  |
 | Descripcion | NVARCHAR(500) | No |  |
 | Precio | DECIMAL(10,2) | No |  |
 | Stock | INT | No | Por defecto: 0 |
-| Activo | BIT | No | Por defecto: 1 |
+| Estado | NVARCHAR(15) | No | Por defecto: 'Activo' |
+| Disponibilidad | Calculada | — | Disponible si Stock > 0, si no Agotado |
 
-**Reglas:** Precio ≥ 0; Stock ≥ 0. Desactivar = Activo 0 (no se borra).
+**Reglas:** Precio ≥ 0; Stock entero ≥ 0. Un solo proveedor, activo al asociarlo (lo valida el API). Disponibilidad es calculada: Disponible si Stock > 0, si no Agotado. Estado Activo o Desactivado.
+
+## Horario
+
+**Dueño:** Persona A (Citas y Agenda). Horario regular de atención por día de la semana.
+
+| Columna | Tipo | Nulo | Notas |
+|---|---|---|---|
+| Id | INT | No | Identidad; PK |
+| DiaSemana | TINYINT | No |  |
+| HoraInicio | TIME(0) | No |  |
+| HoraFin | TIME(0) | No |  |
+
+**Reglas:** DiaSemana de 1 (lunes) a 7 (domingo); HoraFin > HoraInicio. Varios tramos por día; las superposiciones las valida el API.
+
+## BloqueoAgenda
+
+**Dueño:** Persona A (Citas y Agenda). Períodos no disponibles en una fecha específica.
+
+| Columna | Tipo | Nulo | Notas |
+|---|---|---|---|
+| Id | INT | No | Identidad; PK |
+| Fecha | DATE | No |  |
+| HoraInicio | TIME(0) | No |  |
+| HoraFin | TIME(0) | No |  |
+
+**Reglas:** HoraFin > HoraInicio. Sin enlace a Horario.
+
+## Cita
+
+**Dueño:** Persona A (Citas y Agenda). Citas del salón (MCA-01 a MCA-14).
+
+| Columna | Tipo | Nulo | Notas |
+|---|---|---|---|
+| Id | INT | No | Identidad; PK |
+| Codigo | NVARCHAR(30) | No | Único |
+| ClienteId | INT | No | FK → Cliente.Id |
+| Fecha | DATE | No |  |
+| Hora | TIME(0) | No |  |
+| Estado | NVARCHAR(20) | No |  |
+| EsDomicilio | BIT | No | Por defecto: 0 |
+| Direccion | NVARCHAR(300) | Sí |  |
+| Observaciones | NVARCHAR(500) | Sí |  |
+| MotivoCancelacion | NVARCHAR(500) | Sí |  |
+
+**Reglas:** Codigo único, generado por el API de Citas (corto y difícil de adivinar). Estado: Pendiente, Confirmada, Completada o Cancelada. Hora con minutos 00 o 30 y segundos 00; el fin es Hora + suma de las duraciones de CitaServicio. Dirección obligatoria si EsDomicilio = 1. MotivoCancelacion solo en citas Canceladas: obligatorio cuando cancela la administradora (MCA-14, lo valida el API) y nulo si la cancelación vino de una solicitud del cliente aprobada.
+
+## CitaServicio
+
+**Dueño:** Persona A (Citas y Agenda). Servicios de cada cita. Une Citas con el Servicio de la Persona B.
+
+| Columna | Tipo | Nulo | Notas |
+|---|---|---|---|
+| CitaId | INT | No | PK compuesta; FK → Cita.Id |
+| ServicioId | INT | No | PK compuesta; FK → Servicio.Id |
+| DuracionAplicadaMinutos | INT | No |  |
+
+**Reglas:** Llave compuesta (CitaId, ServicioId). DuracionAplicadaMinutos > 0, copiada del servicio al agendar: un cambio posterior del servicio no altera la cita.
+
+## SolicitudCita
+
+**Dueño:** Persona A (Citas y Agenda). Solicitudes de los clientes sobre una cita.
+
+| Columna | Tipo | Nulo | Notas |
+|---|---|---|---|
+| Id | INT | No | Identidad; PK |
+| CitaId | INT | No | FK → Cita.Id |
+| Tipo | NVARCHAR(20) | No |  |
+| FechaSolicitud | DATETIME2(0) | No | Por defecto: hora de Costa Rica (UTC−6) |
+| Estado | NVARCHAR(20) | No | Por defecto: 'Pendiente' |
+| FechaPropuesta | DATE | Sí |  |
+| HoraPropuesta | TIME(0) | Sí |  |
+
+**Reglas:** Tipo: Creacion, Reprogramacion o Cancelacion. Estado: Pendiente, Aprobada o Rechazada. FechaPropuesta y HoraPropuesta solo en reprogramación (si no, nulas); HoraPropuesta con minutos 00 o 30 y segundos 00. Una sola solicitud Pendiente por cita (índice único filtrado). FechaSolicitud en hora de Costa Rica (D-015).
 
 ## Venta
 
-**Dueño:** Persona B (Ignacio). Ventas de productos y servicios. Estados: Registrada, Anulada. Pago confirmado fuera del sistema.
+**Dueño:** Persona B (Ignacio). Ventas de productos y servicios (MV-01 a MV-03).
 
 | Columna | Tipo | Nulo | Notas |
 |---|---|---|---|
-| IdVenta | INT | No | Identidad; PK |
-| IdCliente | INT | Sí | FK → Cliente.IdCliente |
-| IdCita | INT | Sí | FK → Cita.IdCita |
-| ClienteReferencia | NVARCHAR(150) | Sí |  |
-| Fecha | DATE | No | Por defecto: CAST(SYSDATETIME() AS DATE) |
-| Hora | TIME(0) | No | Por defecto: CAST(SYSDATETIME() AS TIME(0)) |
-| Subtotal | DECIMAL(12,2) | No |  |
+| Id | INT | No | Identidad; PK |
+| Codigo | Calculada | — | 'V-' + Id con 6 dígitos (V-000001); Único |
+| FechaHora | DATETIME2(0) | No | Por defecto: hora de Costa Rica (UTC−6) |
+| ReferenciaCliente | NVARCHAR(150) | Sí |  |
+| MetodoPago | NVARCHAR(15) | No |  |
 | Total | DECIMAL(12,2) | No |  |
-| EstadoPago | NVARCHAR(20) | No | Por defecto: N'Confirmado' |
-| CodigoVenta | NVARCHAR(20) | No | Único |
-| MetodoPago | NVARCHAR(20) | No |  |
-| Estado | NVARCHAR(20) | No | Por defecto: N'Registrada' |
-| Anulada | BIT (calculada) | — | Calculada: CAST(CASE WHEN Estado = N'Anulada' THEN 1 ELSE 0 END AS BIT) |
-| MotivoAnulacion | NVARCHAR(250) | Sí |  |
+| Estado | NVARCHAR(15) | No | Por defecto: 'Registrada' |
+| MotivoAnulacion | NVARCHAR(500) | Sí |  |
 
-**Reglas:** CodigoVenta único; MetodoPago en Efectivo, SINPE o Transferencia; Estado en Registrada o Anulada; MotivoAnulacion obligatorio solo si está Anulada; EstadoPago siempre Confirmado; Subtotal y Total ≥ 0. Anular = cambiar Estado (no se borra).
+**Reglas:** Codigo calculado (V-000001), único. FechaHora en hora de Costa Rica al registrar (D-015). ReferenciaCliente opcional y sin FK. MetodoPago: Efectivo, SINPE o Transferencia. Estado Registrada o Anulada; MotivoAnulacion obligatorio solo si está Anulada. Al anular solo cambian Estado y MotivoAnulacion.
 
-## Detalle_Venta
+## VentaProducto
 
-**Dueño:** Persona B (Ignacio). Una fila por producto (cantidad y precio del catálogo) o por servicio (cantidad 1 y precio final).
+**Dueño:** Persona B (Ignacio). Productos de cada venta.
 
 | Columna | Tipo | Nulo | Notas |
 |---|---|---|---|
-| IdDetalle | INT | No | Identidad; PK |
-| IdVenta | INT | No | FK → Venta.IdVenta |
-| IdProducto | INT | Sí | FK → Producto.IdProducto |
-| IdServicio | INT | Sí | FK → Servicio.IdServicio |
+| VentaId | INT | No | PK compuesta; FK → Venta.Id |
+| ProductoId | INT | No | PK compuesta; FK → Producto.Id |
 | Cantidad | INT | No |  |
-| Precio | DECIMAL(10,2) | No |  |
+| PrecioAplicado | DECIMAL(10,2) | No |  |
 
-**Reglas:** Cada fila es de producto (Cantidad > 0, Precio ≥ 0) o de servicio (Cantidad = 1, Precio > 0), nunca de ambos.
+**Reglas:** Llave compuesta (VentaId, ProductoId). Cantidad > 0. PrecioAplicado ≥ 0, copiado del catálogo al vender. El stock se descuenta en la misma transacción.
+
+## VentaServicio
+
+**Dueño:** Persona B (Ignacio). Servicios de cada venta.
+
+| Columna | Tipo | Nulo | Notas |
+|---|---|---|---|
+| VentaId | INT | No | PK compuesta; FK → Venta.Id |
+| ServicioId | INT | No | PK compuesta; FK → Servicio.Id |
+| PrecioFinal | DECIMAL(10,2) | No |  |
+
+**Reglas:** Llave compuesta (VentaId, ServicioId): cada servicio una vez por venta. PrecioFinal > 0, lo escribe la administradora.
 
 ## RevisionVenta
 
-**Dueño:** Persona B (Ignacio). EXTENSIÓN EXT-MV-U01 (no está en el ERS): historial de correcciones de una venta.
+**Dueño:** Persona B (Ignacio). **Extensión EXT-MV-U01, no es parte del ERS** (migración 0002). Historial de correcciones de una venta.
 
 | Columna | Tipo | Nulo | Notas |
 |---|---|---|---|
-| IdRevision | INT | No | Identidad; PK |
-| IdVenta | INT | No | FK → Venta.IdVenta |
-| FechaHora | DATETIME2(0) | No | Por defecto: SYSDATETIME() |
-| Motivo | NVARCHAR(250) | No |  |
-| TotalAnterior | DECIMAL(12,2) | No |  |
-| DetalleAnterior | NVARCHAR(MAX) | No | JSON con productos y servicios antes del cambio |
+| Id | INT | No | Identidad; PK |
+| VentaId | INT | No | FK → Venta.Id |
+| FechaHora | DATETIME2(0) | No | Por defecto: hora de Costa Rica (UTC−6) |
+| Motivo | NVARCHAR(500) | No |  |
+| DatosAnteriores | NVARCHAR(MAX) | No |  |
 
-**Reglas:** DetalleAnterior debe ser JSON válido.
+**Reglas:** Antes de corregir una venta Registrada se guarda en DatosAnteriores, como JSON válido, cómo estaba. Motivo obligatorio. FechaHora en hora de Costa Rica.

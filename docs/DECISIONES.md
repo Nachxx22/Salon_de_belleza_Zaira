@@ -8,6 +8,8 @@ Los dos trabajan directamente en `main`, con commits pequeños, `git pull --reba
 
 ## D-002 — Modelo de datos: diagrama y texto de la sección 3.4 (4 nov 2026)
 
+**Reemplazada por D-013 (5 nov 2026).** Se conserva como historial.
+
 Las tablas y columnas siguen el **diagrama de entidades** de la sección 3.4 del ERS (mismos nombres en PascalCase) y las restricciones siguen el **texto** de 3.4.1 a 3.4.4. Donde no coinciden se resolvió así:
 
 | Tema | Diagrama | Texto 3.4 | Resolución en `0001_base.sql` |
@@ -26,6 +28,8 @@ Tareas pendientes: actualizar el diagrama del ERS con `Fecha` en BloqueoAgenda y
 
 ## D-003 — Precio aproximado de un servicio (4 nov 2026)
 
+**Reemplazada por D-014 (5 nov 2026).**
+
 `PrecioAprox` es el monto mínimo aproximado ("desde ₡6 000"), una de las dos formas que permite MS-01. Si se quiere mostrar un rango, se agrega una columna con una migración nueva.
 
 ## D-004 — Rutas del API por grupo (4 nov 2026)
@@ -37,6 +41,8 @@ Tareas pendientes: actualizar el diagrama del ERS con `Fecha` en BloqueoAgenda y
 Cookie de sesión httpOnly (`zaira.sid`) con express-session y contraseñas con bcrypt. Sesiones en memoria: suficiente para el prototipo local; al reiniciar el API hay que volver a iniciar sesión. En un despliegue real se usaría HTTPS y un almacén persistente (AC-02).
 
 ## D-006 — Fechas y horas locales (4 nov 2026)
+
+**Actualizada por D-015 (5 nov 2026):** la hora de registro ya no depende de la zona configurada en la computadora.
 
 Citas con `DATE` + `TIME(0)` en hora de Costa Rica, sin zona horaria. Fecha y hora de ventas y solicitudes con la hora del servidor (`SYSDATETIME()`), que corre en Costa Rica. En JSON: `YYYY-MM-DD` y `HH:mm`.
 
@@ -63,3 +69,31 @@ Node.js 26.13.0 LTS, JavaScript (sin TypeScript), React 19 con Vite y React Rout
 ## D-012 — Tema visual en un solo archivo (4 nov 2026)
 
 Colores, tipografía, bordes y espaciado salen de `frontend/src/shared/ui/tema.css`. Cuando haya identidad visual definitiva se cambia solo ese archivo.
+
+## D-013 — Modelo de datos unificado, aprobado por los dos (5 nov 2026)
+
+Reemplaza a D-002. La base sigue el **texto** de la sección 3.4.2 del ERS y la propuesta de Persona A (`PROPUESTA_BD_ZAIRA_PARA_REVISION_IGNACIO.md`), revisada con Ignacio y con las correcciones de los dos:
+
+- `0001_base.sql` crea 13 tablas: Administradora, Cliente, Servicio, Proveedor, Producto, Horario, BloqueoAgenda, Cita, CitaServicio, SolicitudCita, Venta, VentaProducto y VentaServicio. `0002` crea `RevisionVenta` (EXT-MV-U01). Total: 14 tablas.
+- Nombres: PK `Id`, FK `<Tabla>Id` y los nombres de tabla del texto del ERS.
+- Diferencias con el diagrama, resueltas según el texto: dos tablas de detalle de venta; Venta sin FK a Cliente ni a Cita (la referencia del cliente es texto); BloqueoAgenda sin enlace a Horario. Ninguna FK borra en cascada.
+- CHECK acordados en las tablas de Citas: la hora de inicio de una cita y la hora propuesta tienen minutos 00 o 30 y segundos 00, y `HoraPropuesta` es nula cuando no es una reprogramación. `MotivoCancelacion` solo se guarda cuando `Cita.Estado = 'Cancelada'`; puede quedar nulo si la cancelación vino de una solicitud del cliente aprobada y es obligatorio cuando cancela la administradora (MCA-14, lo valida el API).
+- Estados guardados sin tilde; Servicio, Producto y Proveedor usan `Activo` y `Desactivado`. Los valores exactos están en `CONTRATOS_API.md`.
+- `0001_base.sql` se reescribió en el mismo archivo porque nadie lo había ejecutado. Fue la única excepción a la regla de no editar migraciones: desde ahora cualquier cambio va en una migración nueva.
+- Pendiente: actualizar el diagrama de la sección 3.4 del ERS (y el de clases, si usa los nombres anteriores) para que coincida con la base.
+
+## D-014 — Precio aproximado de un servicio (5 nov 2026)
+
+Reemplaza a D-003. `Servicio.PrecioAproximado` guarda un solo monto, sin valores negativos: el monto mínimo aproximado que permite MS-01. No se usa rango porque la dueña no puede fijar un máximo: el precio depende del tipo y el largo del cabello. El catálogo muestra el monto con un aviso de que el precio final puede variar según el cabello (MS-01, supuesto 1).
+
+## D-015 — Hora de Costa Rica sin depender de la computadora (5 nov 2026)
+
+`SolicitudCita.FechaSolicitud`, `Venta.FechaHora` y `RevisionVenta.FechaHora` toman por defecto `DATEADD(HOUR, -6, SYSUTCDATETIME())`: Costa Rica está en UTC−6 todo el año, sin horario de verano, así que la hora guardada es la de Costa Rica aunque la computadora tenga otra zona configurada. En el API, `backend/src/shared/fechas.js` da la fecha y la hora actuales de Costa Rica (`hoyCostaRica`, `ahoraCostaRica`) para reglas como «el cliente reserva desde el día siguiente». `mssql` entrega las fechas como objetos `Date` en UTC con el valor guardado; se pasan al JSON con `fechaDeSql` y `horaDeSql` del mismo archivo.
+
+## D-016 — Teléfonos, códigos y concurrencia (5 nov 2026)
+
+- **Teléfonos** de Cliente y Proveedor: exactamente 8 dígitos, sin código de país (+506 no se usa). Al escribir se aceptan espacios y guiones; el API los quita (`validacion.telefono`) y guarda los 8 dígitos seguidos (`88887777`), y un CHECK lo verifica. Así la restricción de único compara siempre lo mismo. La interfaz los muestra como `8888-7777`.
+- **Códigos:** el de venta lo calcula la base a partir del Id (`V-000001`). El de cita lo genera el API de Citas, corto y difícil de adivinar, porque el cliente lo usa junto con su teléfono.
+- **Concurrencia en Citas:** toda operación que cambia la disponibilidad toma el mismo bloqueo de aplicación `agenda` (`sp_getapplock`, modo exclusivo, dueño la transacción) antes de revisar y guardar: crear, aprobar o reprogramar una cita, y crear, cambiar o eliminar horarios y bloqueos. Un solo bloqueo cubre la reprogramación entre dos fechas y los cambios del horario semanal sin riesgo de interbloqueo; para la cantidad de operaciones del salón no afecta la velocidad.
+- **Concurrencia en Ventas:** el stock se descuenta con `UPDATE ... SET Stock = Stock - @cantidad WHERE Id = @id AND Stock >= @cantidad`; si no actualiza la fila, se deshace la venta y se responde «Cantidad insuficiente».
+- `npm run db:verificar` comprueba en SQL Server las reglas de la base, y GitHub Actions lo ejecuta en cada push sobre un SQL Server 2022 temporal.

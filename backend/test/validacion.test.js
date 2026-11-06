@@ -2,11 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { telefono, correo, enteroPositivo, montoNoNegativo, montoPositivo, textoRequerido } from '../src/shared/validacion.js';
 
-test('telefono acepta 8 dígitos y los normaliza como 0000-0000', () => {
-  assert.equal(telefono('88887777'), '8888-7777');
-  assert.equal(telefono('8888 7777'), '8888-7777');
-  assert.equal(telefono('8888-7777'), '8888-7777');
-  assert.throws(() => telefono('1234'), { codigo: 'DATOS_INVALIDOS' });
+test('telefono acepta 8 dígitos y los guarda seguidos, sin código de país (D-016)', () => {
+  assert.equal(telefono('88887777'), '88887777');
+  assert.equal(telefono('8888 7777'), '88887777');
+  assert.equal(telefono('8888-7777'), '88887777');
+  for (const malo of ['1234', '+506 8888 7777', '50688887777', '8888-777a']) {
+    assert.throws(() => telefono(malo), { codigo: 'DATOS_INVALIDOS' }, malo);
+  }
 });
 
 test('correo valida el formato y lo guarda en minúscula', () => {

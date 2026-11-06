@@ -18,6 +18,7 @@
     "db:migrar": "npm run db:migrar -w backend",
     "db:semillas": "npm run db:semillas -w backend",
     "db:admin": "npm run db:admin -w backend",
+    "db:verificar": "npm run db:verificar -w backend",
     "db:preparar": "npm run db:migrar && npm run db:semillas"
   },
   "devDependencies": {

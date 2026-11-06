@@ -38,6 +38,7 @@ npm install
    npm run db:migrar     # crea las tablas (0001, 0002, ...)
    npm run db:semillas   # datos de prueba ficticios
    npm run db:admin      # crea la cuenta de la administradora desde backend/.env
+   npm run db:verificar  # comprueba que la base quedó como se acordó (no deja datos)
    ```
 4. Arranquen todo:
    ```bash
@@ -58,6 +59,7 @@ npm install
 | `npm run db:migrar` | Aplica las migraciones pendientes de `database/migrations` |
 | `npm run db:semillas` | Carga los datos de prueba de `database/seeds` (se puede repetir) |
 | `npm run db:admin` | Crea o actualiza la cuenta de la administradora |
+| `npm run db:verificar` | Comprueba en SQL Server las 14 tablas, sus restricciones, la hora de Costa Rica y el login; no deja datos |
 | `npm run db:preparar` | `db:migrar` + `db:semillas` |
 
 **Para la demostración** (computadora de la Persona A): `npm run build` y luego `npm start`. Todo queda en http://localhost:3000.
