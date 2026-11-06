@@ -18,12 +18,15 @@ DECLARE @BaseDatos SYSNAME = N'ZairaDev_B';   -- ZairaDev_A, ZairaDev_B o ZairaI
 DECLARE @Login     SYSNAME = N'TU_LOGIN_SQL'; -- login SQL de desarrollo
 
 /* Crear el login (solo si todavía no existe):
+DECLARE @crearLogin NVARCHAR(MAX) = N'CREATE LOGIN ' + QUOTENAME(@Login) + N' WITH PASSWORD = N''CAMBIAR_AQUI'', CHECK_POLICY = OFF;';
 IF SUSER_ID(@Login) IS NULL
-    EXEC (N'CREATE LOGIN ' + QUOTENAME(@Login) + N' WITH PASSWORD = N''CAMBIAR_AQUI'', CHECK_POLICY = OFF;');
+    EXEC (@crearLogin);
 */
 
+/* EXEC (...) no acepta funciones como QUOTENAME: el texto se arma antes en una variable. */
+DECLARE @crearBase NVARCHAR(MAX) = N'CREATE DATABASE ' + QUOTENAME(@BaseDatos) + N';';
 IF DB_ID(@BaseDatos) IS NULL
-    EXEC (N'CREATE DATABASE ' + QUOTENAME(@BaseDatos) + N';');
+    EXEC (@crearBase);
 
 DECLARE @sql NVARCHAR(MAX) = N'
 USE ' + QUOTENAME(@BaseDatos) + N';
