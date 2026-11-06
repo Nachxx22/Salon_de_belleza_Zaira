@@ -136,9 +136,41 @@ Cuerpo de `POST /api/admin/citas`:
 - Códigos de negocio: `409 HORARIO_OCUPADO` («El horario seleccionado ya no está disponible. Seleccione otro horario.»), `409 SERVICIO_NO_DISPONIBLE`, `409 DOMICILIO_NO_DISPONIBLE`, `400 FECHA_PASADA`.
 - La disponibilidad se calcula con un solo algoritmo en el servidor (`horariosDisponibles` en `citas.logica.js`): horas cada 30 minutos dentro del horario regular, donde cabe la duración total, sin chocar con bloqueos, citas `Pendiente` o `Confirmada` ni reprogramaciones `Pendiente`. Al registrar se vuelve a verificar con el bloqueo `agenda` tomado (D-016).
 
+## Proveedores — Persona B
+
+| Método | Ruta | Requerimiento | Entrada | Respuesta |
+|---|---|---|---|---|
+| GET | `/api/admin/proveedores` | MPV-02 | `?buscar=` nombre, teléfono o correo (opcional) | `200 [proveedor]`, activos primero |
+| GET | `/api/admin/proveedores/:id` | MPV-02 | — | `200 proveedor` con `productos: [{ id, nombre, marca, stock, disponibilidad, estado }]` |
+| POST | `/api/admin/proveedores` | MPV-01 | `{ nombre, telefono, correoElectronico }` (los tres obligatorios) | `201 proveedor` (queda `Activo`) |
+| PUT | `/api/admin/proveedores/:id` | MPV-03 | igual que POST; no cambia estado ni productos | `200 proveedor` |
+| PATCH | `/api/admin/proveedores/:id/desactivar` | MPV-04 | — | `200 proveedor`; si ya estaba desactivado: «El proveedor ya está desactivado.» |
+| PATCH | `/api/admin/proveedores/:id/reactivar` | **EXT-MPV-R01** (extensión, no está en el ERS; D-020) | — | `200 proveedor` en `Activo` |
+
+- Proveedor: `{ id, nombre, telefono, correoElectronico, estado }`.
+- `409 DUPLICADO` con el mensaje «El teléfono ingresado ya pertenece a otro proveedor registrado.» (o «El correo electrónico…»).
+
+## Productos — Persona B
+
+| Método | Ruta | Requerimiento | Entrada | Respuesta |
+|---|---|---|---|---|
+| GET | `/api/publico/productos` | MPD-03 | — | `200 [{ id, nombre, marca, categoria, descripcion, precio, disponibilidad }]`, solo `Activo`; sin stock ni proveedor |
+| GET | `/api/admin/productos` | MPD-03 | — | `200 [producto]`, activos y desactivados |
+| GET | `/api/admin/productos/inventario` | MPD-04 | — | `200 [{ id, nombre, marca, stock, disponibilidad, estado }]` |
+| GET | `/api/admin/productos/:id` | MPD-03 | — | `200 producto` |
+| POST | `/api/admin/productos` | MPD-01 | `{ nombre, marca, categoria, descripcion, precio, stock, proveedorId }` | `201 producto` (queda `Activo`) |
+| PUT | `/api/admin/productos/:id` | MPD-05 | igual que POST sin `stock` (si viene, se ignora) | `200 producto`; el stock no cambia |
+| PATCH | `/api/admin/productos/:id/stock` | MPD-06 | `{ stock }` entero ≥ 0 | `200 producto` |
+| PATCH | `/api/admin/productos/:id/desactivar` | MPD-02 | — | `200 producto`; sale del catálogo público |
+| PATCH | `/api/admin/productos/:id/reactivar` | **EXT-MPD-R01** (extensión, no está en el ERS; D-020) | — | `200 producto` en `Activo` |
+
+- Producto (admin): `{ id, nombre, marca, categoria, descripcion, precio, stock, disponibilidad, estado, proveedor: { id, nombre, estado } }`.
+- `409 PROVEEDOR_NO_DISPONIBLE`: el proveedor elegido no existe o está desactivado. Al actualizar, si el producto conserva su mismo proveedor, se acepta aunque ese proveedor esté desactivado (MPV-04, restricción 3).
+- El descuento y la reposición automática de stock (MPD-06 desde MV-01 y MV-03) se hacen en la transacción de la venta.
+
 ## Pendientes de definir
 
 Cada responsable completa la tabla de rutas de su módulo antes de programarlo. Las rutas propuestas están en el comentario inicial de cada archivo `backend/src/modules/<modulo>/<modulo>.rutas.js`.
 
-- **Proveedores, Productos, Ventas** (Persona B).
+- **Ventas** (Persona B).
 - **Citas, Agenda, Solicitudes** (Persona A). La disponibilidad se calcula con un solo algoritmo en el servidor; React no decide si un horario es válido.

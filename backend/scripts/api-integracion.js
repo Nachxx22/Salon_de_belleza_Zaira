@@ -1,4 +1,5 @@
-// Integración 1 de punta a punta: acceso + servicios + citas, contra SQL Server real.
+// Pruebas de punta a punta contra SQL Server real: Integración 1 (acceso +
+// servicios + citas) y paso 7 (proveedores y productos).
 // Uso: npm run api:integracion  (lee backend/.env; necesita db:migrar, db:semillas y db:admin)
 //
 // OJO: deja datos de prueba (un servicio, un cliente y citas). Úsenlo en una
@@ -169,10 +170,85 @@ try {
   r = await llamar('GET', '/admin/citas?estado=Otra');
   revisar('un estado inválido se rechaza (MCA-04)', () => assert.equal(r.cuerpo.codigo, 'DATOS_INVALIDOS'));
 
+  // 8. Proveedores (MPV-01 a MPV-04, EXT-MPV-R01)
+  console.log('Proveedores y productos');
+  const telProveedor = `2${sufijo.padStart(7, '0')}`;
+  const datosProveedor = { nombre: `Proveedor prueba ${sufijo}`, telefono: telProveedor, correoElectronico: `p${sufijo}@prueba.example` };
+  r = await llamar('POST', '/admin/proveedores', datosProveedor);
+  revisar('se registra un proveedor Activo (MPV-01)', () => {
+    assert.equal(r.estado, 201, JSON.stringify(r.cuerpo));
+    assert.equal(r.cuerpo.data.estado, 'Activo');
+  });
+  const proveedor = r.cuerpo.data;
+  r = await llamar('POST', '/admin/proveedores', { ...datosProveedor, correoElectronico: `otro${sufijo}@prueba.example` });
+  revisar('no se repite el teléfono de otro proveedor (MPV-01, criterio 4)', () => {
+    assert.equal(r.estado, 409);
+    assert.match(r.cuerpo.mensaje, /teléfono/);
+  });
+  r = await llamar('GET', `/admin/proveedores?buscar=${telProveedor.slice(0, 4)}-${telProveedor.slice(4)}`);
+  revisar('se busca por teléfono (MPV-02, criterio 2)', () => assert.equal(r.cuerpo.data[0]?.id, proveedor.id));
+
+  // 9. Productos (MPD-01 a MPD-06)
+  const datosProducto = {
+    nombre: `Producto prueba ${sufijo}`, marca: 'Marca', categoria: 'Pruebas', descripcion: 'Creado por la prueba.',
+    precio: 4500, stock: 0, proveedorId: proveedor.id,
+  };
+  r = await llamar('POST', '/admin/productos', datosProducto);
+  revisar('se registra un producto con stock 0 y aparece Agotado (MPD-01, criterio 5)', () => {
+    assert.equal(r.estado, 201, JSON.stringify(r.cuerpo));
+    assert.equal(r.cuerpo.data.disponibilidad, 'Agotado');
+  });
+  const producto = r.cuerpo.data;
+  r = await llamar('PATCH', `/admin/productos/${producto.id}/stock`, { stock: 5 });
+  revisar('el ajuste manual de stock lo deja Disponible (MPD-06, criterios 1 y 4)', () => {
+    assert.equal(r.cuerpo.data.stock, 5);
+    assert.equal(r.cuerpo.data.disponibilidad, 'Disponible');
+  });
+  r = await llamar('PATCH', `/admin/productos/${producto.id}/stock`, { stock: -1 });
+  revisar('un stock negativo se rechaza (MPD-06, criterio 2)', () => assert.equal(r.cuerpo.codigo, 'DATOS_INVALIDOS'));
+  r = await llamar('PUT', `/admin/productos/${producto.id}`, { ...datosProducto, precio: 5000, stock: 99 });
+  revisar('actualizar el producto no cambia el stock (MPD-05, criterio 4)', () => {
+    assert.equal(r.cuerpo.data.precio, 5000);
+    assert.equal(r.cuerpo.data.stock, 5);
+  });
+  r = await llamar('GET', '/admin/productos/inventario');
+  revisar('el inventario muestra el stock actual (MPD-04)', () => assert.equal(r.cuerpo.data.find((p) => p.id === producto.id)?.stock, 5));
+  r = await llamar('GET', '/publico/productos');
+  revisar('el catálogo público lo muestra sin stock ni proveedor (MPD-03)', () => {
+    const publico = r.cuerpo.data.find((p) => p.id === producto.id);
+    assert.equal(publico.disponibilidad, 'Disponible');
+    assert.equal('stock' in publico || 'proveedor' in publico, false);
+  });
+
+  // 10. Proveedor desactivado (MPV-04)
+  r = await llamar('PATCH', `/admin/proveedores/${proveedor.id}/desactivar`);
+  revisar('se desactiva el proveedor y conserva sus productos (MPV-04, criterios 3 y 5)', () => {
+    assert.equal(r.cuerpo.data.estado, 'Desactivado');
+    assert.ok(r.cuerpo.data.productos.some((p) => p.id === producto.id));
+  });
+  r = await llamar('PATCH', `/admin/proveedores/${proveedor.id}/desactivar`);
+  revisar('desactivarlo otra vez informa que ya está desactivado (MPV-04, flujo alterno)', () => assert.match(r.cuerpo.mensaje, /ya está desactivado/));
+  r = await llamar('POST', '/admin/productos', { ...datosProducto, nombre: `Otro ${sufijo}` });
+  revisar('no se asocian productos nuevos a un proveedor desactivado (MPV-04, criterio 6)', () => assert.equal(r.cuerpo.codigo, 'PROVEEDOR_NO_DISPONIBLE'));
+  r = await llamar('PUT', `/admin/productos/${producto.id}`, { ...datosProducto, precio: 5200 });
+  revisar('un producto existente se puede actualizar conservando su proveedor desactivado (MPD-05)', () => assert.equal(r.cuerpo.data.precio, 5200));
+  r = await llamar('PATCH', `/admin/proveedores/${proveedor.id}/reactivar`);
+  revisar('se reactiva el proveedor (EXT-MPV-R01)', () => assert.equal(r.cuerpo.data.estado, 'Activo'));
+
+  // 11. Producto desactivado y reactivado (MPD-02, EXT-MPD-R01)
+  r = await llamar('PATCH', `/admin/productos/${producto.id}/desactivar`);
+  r = await llamar('GET', '/publico/productos');
+  revisar('un producto desactivado sale del catálogo público (MPD-02, criterio 3)', () => assert.ok(!r.cuerpo.data.some((p) => p.id === producto.id)));
+  r = await llamar('GET', `/admin/productos/${producto.id}`);
+  revisar('pero sigue en la consulta administrativa (MPD-02 criterio 4, MPD-03 criterio 3)', () => assert.equal(r.cuerpo.data.estado, 'Desactivado'));
+  r = await llamar('PATCH', `/admin/productos/${producto.id}/reactivar`);
+  r = await llamar('GET', '/publico/productos');
+  revisar('al reactivarlo vuelve al catálogo (EXT-MPD-R01)', () => assert.ok(r.cuerpo.data.some((p) => p.id === producto.id)));
+
   r = await llamar('POST', '/auth/logout');
   revisar('la administradora cierra sesión (MA-02)', () => assert.equal(r.estado, 200));
 
-  console.log(`\nTodo bien: ${revisiones} revisiones de la Integración 1.`);
+  console.log(`\nTodo bien: ${revisiones} revisiones de punta a punta.`);
 } catch (error) {
   console.error(`\nFalló después de ${revisiones} revisiones:`, error.message);
   process.exitCode = 1;

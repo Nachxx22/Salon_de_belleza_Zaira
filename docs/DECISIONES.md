@@ -112,3 +112,9 @@ Solo los archivos `<modulo>.datos.js` escriben SQL y usan `consulta` o `enTransa
 - **Código de cita:** `C-` seguido de 8 caracteres al azar (`crypto.randomInt`) de un alfabeto sin `0`, `O`, `1` ni `I`, para dictarlo por teléfono sin confusiones (por ejemplo `C-K7MQ2XPA`). Hay más de un billón de combinaciones, así que no se puede adivinar junto con un teléfono.
 - **Disponibilidad:** un solo algoritmo en `citas.logica.js` (`horariosDisponibles`). Ofrece horas cada 30 minutos dentro del horario regular del día (los tramos que se tocan se unen), donde cabe la duración total, sin chocar con bloqueos, citas `Pendiente` o `Confirmada` ni reprogramaciones `Pendiente`. Para la administradora, el mismo día solo ofrece horas que todavía no han pasado y rechaza fechas pasadas (`FECHA_PASADA`). La anticipación mínima del cliente (MCA-01) se agregará con la ruta pública.
 - **Transacción:** `citas.datos.js` (`registrarCita`) toma el bloqueo `agenda`, vuelve a leer la agenda, pregunta a la lógica si la hora sigue libre y registra cliente, cita y servicios juntos (D-016, D-017).
+
+## D-020 — EXT-MPV-R01 y EXT-MPD-R01: reactivar proveedor y producto (6 nov 2026)
+
+**Extensiones acordadas, no son parte del ERS.** Como en D-018 (servicios), el ERS solo define desactivar un proveedor (MPV-04) o un producto (MPD-02). Se agregan `PATCH /api/admin/proveedores/:id/reactivar` y `PATCH /api/admin/productos/:id/reactivar`, con confirmación en pantalla. No se cambian ventas, productos asociados ni stock. **Las ventas no tienen esta extensión:** una venta anulada (MV-03) queda anulada para siempre.
+
+Otras decisiones del paso 7: el catálogo público de productos no muestra stock, proveedor ni estado (MPD-03, restricción 1); al actualizar un producto que conserva su mismo proveedor, se acepta aunque ese proveedor esté desactivado, porque los productos conservan la asociación (MPV-04, restricción 3); el stock solo cambia con MPD-06 o con una venta.
