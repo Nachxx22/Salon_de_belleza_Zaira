@@ -55,3 +55,15 @@ SCRUM-31 SCRUM-32 MPV: registrar y consultar proveedores
 - Usen la clave del **requerimiento funcional** (columna *Jira RF* de `docs/MATRIZ_RF_PRUEBAS.md`).
 - Para tareas técnicas que no son de un requerimiento (configuración, documentación), escriban el mensaje sin clave.
 - Mover actividades en el tablero de Jira (To Do → In Progress → In Review → Done) se hace en Jira; el commit solo las enlaza.
+
+## Integración 1: acceso + servicios + citas
+
+Se hace cuando Citas tenga crear cita (MCA-12 o MCA-01) en `main`. Con una base limpia `ZairaIntegracion` (ver arriba), en una sola computadora:
+
+1. **Acceso (MA-01, MA-02):** iniciar sesión en `/admin/login`, entrar al panel y cerrar sesión. Sin sesión, `/admin/...` vuelve al login.
+2. **Servicios (MS-01 a MS-05):** registrar un servicio nuevo de 30 minutos que permita domicilio; aparece en `/servicios`.
+3. **Cita con un servicio real:** crear una cita que use ese servicio. Citas lo lee de `GET /api/publico/servicios` (solo activos) con `id`, `nombre`, `duracionMinutos` y `permiteDomicilio` (`CONTRATOS_API.md`). La hora de fin de la cita es la hora de inicio + 30 minutos.
+4. **La duración queda fija en la cita (MS-03, criterio 3):** cambiar la duración del servicio a 60 minutos. La cita del paso 3 sigue durando 30 (`CitaServicio.DuracionAplicadaMinutos`); una cita nueva ya usa 60.
+5. **Servicio desactivado (MS-04, criterio 3):** desactivar el servicio. Ya no se puede elegir para una cita nueva, y la cita del paso 3 sigue mostrándolo.
+6. **Reactivar (EXT-MS-R01, extensión):** reactivarlo; vuelve a poder elegirse.
+7. Anotar el resultado en `MATRIZ_RF_PRUEBAS.md` y corregir en el momento lo que no calce con el contrato.

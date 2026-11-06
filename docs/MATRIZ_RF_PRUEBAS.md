@@ -18,12 +18,12 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 
 | Código | Requerimiento | Prioridad ERS | Jira RF | Jira CU | Fase | Estado | Prueba |
 |---|---|---|---|---|---|---|---|
-| MS-01 | Registrar servicio | Alta | SCRUM-39 | SCRUM-93 | P0 | integrado | Pruebas automáticas de las reglas de validación (criterios 1 a 5 y 8). Falta probar contra SQL Server con la pantalla. |
-| MS-02 | Consultar servicio (Cliente) | Alta | SCRUM-40 | SCRUM-94 | P0 | integrado | Ruta pública y catálogo; solo servicios activos. Falta probar con datos reales de SQL Server. |
-| MS-03 | Actualizar servicio | Alta | SCRUM-41 | SCRUM-95 | P0 | integrado | Pruebas automáticas de validación. Falta probar contra SQL Server (criterio 3: citas existentes no cambian). |
-| MS-04 | Desactivar servicio | Media | SCRUM-42 | SCRUM-96 | P0 | integrado | Baja lógica con confirmación en pantalla. Falta probar contra SQL Server. |
-| MS-05 | Consultar servicios (Administrador) | Alta | SCRUM-43 | SCRUM-97 | P0 | integrado | Listado administrativo con activos y desactivados. Falta probar contra SQL Server. |
-| EXT-MS-R01 | Reactivar servicio (**extensión acordada, no está en el ERS**; D-018) | — | — | — | P0 | integrado | Botón «Reactivar» con confirmación en servicios desactivados. Falta probar contra SQL Server. |
+| MS-01 | Registrar servicio | Alta | SCRUM-39 | SCRUM-93 | P0 | probado | Pruebas automáticas de validación y prueba manual con SQL Server (6 nov): registrar, datos inválidos, cancelar. |
+| MS-02 | Consultar servicio (Cliente) | Alta | SCRUM-40 | SCRUM-94 | P0 | probado | Catálogo con SQL Server: solo servicios activos, aviso de precio aproximado. |
+| MS-03 | Actualizar servicio | Alta | SCRUM-41 | SCRUM-95 | P0 | probado | Actualización probada con SQL Server. Falta criterio 3 (citas existentes conservan la duración): se prueba en la Integración 1 con Citas. |
+| MS-04 | Desactivar servicio | Media | SCRUM-42 | SCRUM-96 | P0 | probado | Baja lógica con confirmación, probada con SQL Server: sale del catálogo y queda en el listado administrativo. |
+| MS-05 | Consultar servicios (Administrador) | Alta | SCRUM-43 | SCRUM-97 | P0 | probado | Listado administrativo con activos y desactivados, probado con SQL Server. |
+| EXT-MS-R01 | Reactivar servicio (**extensión acordada, no está en el ERS**; D-018) | — | — | — | P0 | probado | Reactivar con confirmación, probado con SQL Server: vuelve al catálogo. |
 
 ## Proveedores — Persona B (Ignacio)
 
