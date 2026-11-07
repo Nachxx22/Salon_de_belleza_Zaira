@@ -9,7 +9,8 @@ Acuerdos de comunicación entre React y Express, y entre los módulos de cada pe
   - `/api/publico/<modulo>`: funciones del cliente, sin sesión. Solo devuelven información pública (Ley 8968, AC-03).
   - `/api/admin/<modulo>`: funciones administrativas. El servidor exige sesión para todo este grupo (AC-01); no basta con ocultar botones en React.
   - `/api/auth`: inicio y cierre de sesión.
-  - `/api/salud`: estado del API y de la conexión con SQL Server.
+  - `/api/salud`: público; solo indica si el API y SQL Server están conectados (sin nombres de base ni servidor).
+  - `/api/admin/salud`: diagnóstico completo para la administradora (EXT-SAL-01, D-025).
 - **JSON:** los nombres de los campos son los de las columnas en camelCase (`Id` → `id`, `DuracionMinutos` → `duracionMinutos`, `ClienteId` → `clienteId`).
 - **Fechas y horas:** fecha `YYYY-MM-DD` y hora `HH:mm`, en hora de Costa Rica. No se convierten a UTC. La fecha y la hora actuales salen de `backend/src/shared/fechas.js`, no del reloj de la computadora (D-015).
 - **Montos:** números en colones, con hasta 2 decimales.
@@ -238,6 +239,18 @@ Cuerpo de `POST /api/admin/ventas`:
 - EXT-MV-U01: `409 VENTA_NO_EDITABLE` si la venta está Anulada. Los productos que ya estaban conservan su precio original; los nuevos toman el del catálogo.
 - Códigos de negocio: `409 CANTIDAD_INSUFICIENTE` con el mensaje exacto «Cantidad insuficiente» y `detalles: { producto, disponible, solicitado }`; `400 PAGO_NO_CONFIRMADO`; `409 PRODUCTO_NO_DISPONIBLE` y `409 SERVICIO_NO_DISPONIBLE` (desactivado o inexistente); `409 VENTA_YA_ANULADA`.
 - Registrar descuenta el stock y anular lo repone en la misma transacción que la venta (D-016, D-017); nunca quedan cambios parciales.
+
+## Salud del sistema (EXT-SAL-01, herramienta interna, no está en el ERS) — Persona B
+
+| Método | Ruta | Uso |
+|---|---|---|
+| GET | `/api/admin/salud` | Revisión completa del API, SQL Server, migraciones, tablas y endpoints |
+| POST | `/api/admin/salud/escritura/:modulo` | Prueba de escritura que siempre se revierte (`servicios`, `proveedores`, `productos`, `ventas`, `agenda`) |
+
+- `GET` devuelve `{ revisadoEn, duracionMs, general, api, baseDatos, migraciones, tablas, modulos, sugerencias }`. `general` es `OK`, `CON_PROBLEMAS` o el tipo de error de la conexión.
+- Cada módulo: `{ clave, nombre, crud, requerimientos, estado, operaciones: { C, R, U, D }, lectura: { ok, ms, registros }, pruebaEscritura, endpoints: [{ metodo, ruta, operacion, rf, accion, estado, detalle, necesita }] }`.
+- Estados: `OK`, `SIN_CONEXION`, `LOGIN`, `BASE_NO_EXISTE`, `FALTA_TABLA`, `SIN_PERMISO`, `RESTRICCION`, `ERROR`. Los errores traen `{ tipo, codigo, numero, mensaje, sugerencia }`.
+- `POST` devuelve `{ modulo, nombre, revertida: true, duracionMs, estado, pasos: [{ operacion, descripcion, estado, ms, error }] }`; un paso puede quedar `OMITIDA` o `NO_PROBADA`. Un módulo sin prueba responde `400 DATOS_INVALIDOS`.
 
 ## Pendientes de definir
 

@@ -11,7 +11,7 @@ Contexto para cualquier agente (Claude u otro) que trabaje en este repositorio, 
 
 ## Reglas
 
-1. **Respeten los dueños de las carpetas** (README, "Estructura y dueños"). Persona A: Citas, Agenda, Solicitudes, Clientes y `frontend/src/shared/ui`. Persona B: Acceso, Servicios, Proveedores, Productos, Ventas, `backend/src/app`, `backend/src/shared` y `frontend/src/shared/api`. No modifiquen el módulo de la otra persona si la tarea no lo pide.
+1. **Respeten los dueños de las carpetas** (README, "Estructura y dueños"). Persona A: Citas, Agenda, Solicitudes, Clientes y `frontend/src/shared/ui`. Persona B: Acceso, Servicios, Proveedores, Productos, Ventas, Salud del sistema, `backend/src/app`, `backend/src/shared` y `frontend/src/shared/api`. No modifiquen el módulo de la otra persona si la tarea no lo pide.
 2. **Base de datos:** nunca editen migraciones existentes; agreguen una nueva en `database/migrations` con nombre `AAAAMMDD_HHMM_<inicial>_<descripcion>.sql`. Nada de borrados físicos de historial (desactivar, cancelar o anular).
 3. **API:** sigan `docs/CONTRATOS_API.md` (respuesta `{ ok, data }`, errores `{ ok: false, codigo, mensaje }`). Rutas públicas en `rutasPublicas` y administrativas en `rutasAdmin` del archivo `.rutas.js` del módulo; las administrativas ya exigen sesión.
 4. **Capas del módulo:** `<modulo>.rutas.js` (HTTP), `<modulo>.logica.js` (reglas del caso de uso), `<modulo>.datos.js` (SQL parametrizado con `consulta` o `enTransaccion` de `backend/src/shared/db.js`). Nunca concatenen datos del usuario en el SQL.

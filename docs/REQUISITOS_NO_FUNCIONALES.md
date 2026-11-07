@@ -91,7 +91,7 @@ Cada requisito indica **cómo lo cumple el sistema**, la **evidencia** y **cómo
 - La cita del cliente se ve solo con código **y** teléfono, y la respuesta no incluye datos de contacto ni dirección.
 - Si el código o el teléfono no coinciden, el mensaje no dice cuál de los dos falla.
 - El teléfono viaja en el cuerpo de la petición, nunca en la URL (no queda en historiales ni registros).
-- Los errores inesperados responden un mensaje genérico, sin detalles internos. En producción, `/api/salud` tampoco muestra el detalle técnico de la conexión a SQL Server.
+- Los errores inesperados responden un mensaje genérico, sin detalles internos. `/api/salud` es pública y solo dice si hay conexión, sin nombre de base ni servidor (en producción tampoco el motivo); el detalle técnico está en la página «Salud del sistema», que exige sesión (D-025).
 - Cabeceras `X-Content-Type-Options`, `X-Frame-Options` y `Referrer-Policy`.
 
 **Evidencia:** prueba de punta a punta («con un teléfono que no corresponde no muestra la cita», «el catálogo público lo muestra sin stock ni proveedor») y `api.test.js` (cabeceras; la consulta de citas no existe por GET).

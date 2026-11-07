@@ -2,7 +2,8 @@
 // Todos los módulos ya están montados; normalmente nadie necesita editar este
 // archivo: cada persona agrega rutas dentro del archivo .rutas.js de su módulo.
 //
-//   /api/salud               estado del API y de la conexión con SQL Server
+//   /api/salud               público: solo si el API y SQL Server están conectados
+//   /api/admin/salud         administrativo: diagnóstico completo (módulo salud, D-025)
 //   /api/auth                iniciar y cerrar sesión (MA-01, MA-02)
 //   /api/publico/<modulo>    funciones públicas, sin sesión
 //   /api/admin/<modulo>      funciones administrativas, exigen sesión (AC-01)
@@ -19,16 +20,19 @@ import * as ventas from '../modules/ventas/ventas.rutas.js';
 import * as citas from '../modules/citas/citas.rutas.js';
 import * as agenda from '../modules/agenda/agenda.rutas.js';
 import * as solicitudes from '../modules/solicitudes/solicitudes.rutas.js';
+import * as salud from '../modules/salud/salud.rutas.js';
 
 export const rutasApi = Router();
 
+// Público: solo dice si hay conexión. El detalle (base, servidor, permisos, endpoints)
+// está en /api/admin/salud, que exige sesión (AC-03: no mostrar datos técnicos al público).
 rutasApi.get('/salud', async (req, res) => {
   let baseDatos;
   try {
-    const info = await probarConexion();
-    baseDatos = { conectada: true, nombre: info.baseDatos };
+    await probarConexion();
+    baseDatos = { conectada: true };
   } catch (error) {
-    // En producción no se muestra el detalle técnico (servidor, usuario) al público (AC-03).
+    // En desarrollo se muestra el motivo para ayudar a instalar el proyecto en cada computadora.
     baseDatos = { conectada: false, mensaje: config.enProduccion ? 'Base de datos no disponible.' : error.message };
   }
   responderOk(res, { api: 'activa', baseDatos });
@@ -53,4 +57,5 @@ admin.use('/ventas', ventas.rutasAdmin);
 admin.use('/citas', citas.rutasAdmin);
 admin.use('/agenda', agenda.rutasAdmin);
 admin.use('/solicitudes', solicitudes.rutasAdmin);
+admin.use('/salud', salud.rutasAdmin);
 rutasApi.use('/admin', admin);

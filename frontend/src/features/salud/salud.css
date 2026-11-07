@@ -1,0 +1,173 @@
+/* Salud del sistema (EXT-SAL-01) — dueño: Persona B. Solo variables de tema.css. */
+
+/* Rutas de archivos y mensajes técnicos largos se parten en lugar de desbordar en celular. */
+.salud {
+  overflow-wrap: break-word;
+}
+
+.salud > h2 {
+  margin-top: calc(var(--espacio) * 2);
+}
+
+.salud-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: var(--espacio);
+}
+
+.salud-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0 0 var(--espacio);
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.salud-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--color-superficie);
+  color: var(--color-texto-suave);
+}
+
+.salud-estado--bien {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+  border-color: var(--color-exito);
+}
+
+.salud-estado--aviso {
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso);
+  border-color: var(--color-aviso);
+}
+
+.salud-estado--mal {
+  background: var(--color-error-fondo);
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.salud-modulo__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.salud-modulo__cabecera h3 {
+  margin: 0;
+}
+
+.salud-crud {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.salud-crud li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-pequeno);
+  font-size: 0.85rem;
+}
+
+.salud-crud .salud-estado {
+  align-self: flex-start;
+}
+
+.salud-crud__letra {
+  font-weight: 700;
+  color: var(--color-texto);
+}
+
+.salud-datos {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.salud-datos dt {
+  font-weight: 600;
+}
+
+.salud-datos dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.salud-tecnico {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+/* Las rutas se leen mejor en una sola línea; la tabla ya tiene desplazamiento horizontal. */
+.salud-ruta {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* Etiqueta arriba y valor abajo: para textos largos en columnas angostas. */
+.salud-datos--apilado {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.salud-datos--apilado dd {
+  margin-bottom: 0.4rem;
+}
+
+.salud-lista {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.salud-modulo details {
+  margin-top: 0.5rem;
+}
+
+.salud-modulo summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-primario);
+}
+
+.salud-columnas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: var(--espacio);
+}
+
+@media (max-width: 600px) {
+  .salud-crud {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .salud-datos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .salud-datos dd {
+    margin-bottom: 0.4rem;
+  }
+}

@@ -2,7 +2,7 @@
 // servicios + citas), paso 7 (proveedores y productos), paso 8 (ventas) y
 // paso 9 (EXT-MV-U01 corregir venta, extensión que no está en el ERS) y
 // hito P0 (configuración de agenda, reprogramar y cancelar citas) y los P1 de
-// citas (cliente, solicitudes y completar).
+// citas (cliente, solicitudes y completar) y la página de salud del sistema.
 // Uso: npm run api:integracion  (lee backend/.env; necesita db:migrar, db:semillas y db:admin)
 //
 // OJO: deja datos de prueba (un servicio, un cliente y citas). Úsenlo en una
@@ -627,8 +627,31 @@ try {
   r = await llamar('PATCH', `/admin/citas/${cita2.id}/completar`);
   revisar('una cita Completada no se completa otra vez (MCA-07, criterio 3)', () => assert.equal(r.cuerpo.codigo, 'CITA_NO_CONFIRMADA'));
 
+  console.log('Salud del sistema (EXT-SAL-01)');
+  r = await llamar('GET', '/admin/salud');
+  const salud = r.cuerpo.data;
+  const problemas = salud.modulos.flatMap((m) => m.endpoints.filter((e) => e.estado !== 'OK').map((e) => `${e.metodo} ${e.ruta}: ${e.estado} ${e.detalle}`));
+  revisar('todos los endpoints de los 5 CRUD y de los módulos de apoyo están OK', () => assert.deepEqual(problemas, []));
+  revisar('las migraciones están al día y la revisión general está OK', () => {
+    assert.equal(salud.migraciones.estado, 'OK');
+    assert.equal(salud.general, 'OK');
+  });
+  const filasAntes = Object.fromEntries(salud.tablas.map((t) => [t.nombre, t.filas]));
+  for (const modulo of salud.modulos.filter((m) => m.pruebaEscritura)) {
+    r = await llamar('POST', `/admin/salud/escritura/${modulo.clave}`);
+    revisar(`la prueba de escritura de ${modulo.nombre} pasa`, () => {
+      assert.equal(r.cuerpo.data.estado, 'OK', JSON.stringify(r.cuerpo.data.pasos));
+      assert.ok(r.cuerpo.data.pasos.every((p) => ['OK', 'OMITIDA'].includes(p.estado)));
+    });
+  }
+  r = await llamar('GET', '/admin/salud');
+  const filasDespues = Object.fromEntries(r.cuerpo.data.tablas.map((t) => [t.nombre, t.filas]));
+  revisar('las pruebas de escritura se revirtieron: ninguna tabla cambió de tamaño', () => assert.deepEqual(filasDespues, filasAntes));
+
   r = await llamar('POST', '/auth/logout');
   revisar('la administradora cierra sesión (MA-02)', () => assert.equal(r.estado, 200));
+  r = await llamar('GET', '/admin/salud');
+  revisar('sin sesión, la página de salud responde 401 (AC-01)', () => assert.equal(r.estado, 401));
 
   console.log(`\nTodo bien: ${revisiones} revisiones de punta a punta.`);
 } catch (error) {

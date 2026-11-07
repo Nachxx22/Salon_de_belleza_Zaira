@@ -41,6 +41,7 @@ const MENU_ADMIN = [
   { ruta: '/admin/citas', texto: 'Citas' },
   { ruta: '/admin/agenda', texto: 'Agenda' },
   { ruta: '/admin/solicitudes', texto: 'Solicitudes' },
+  { ruta: '/admin/salud', texto: 'Salud del sistema' },
 ];
 
 export function LayoutAdmin() {

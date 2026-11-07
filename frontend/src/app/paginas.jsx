@@ -25,6 +25,7 @@ const MODULOS = [
   { ruta: '/admin/citas', titulo: 'Citas', detalle: 'Agenda de citas del salón' },
   { ruta: '/admin/agenda', titulo: 'Agenda', detalle: 'Horario regular y bloqueos' },
   { ruta: '/admin/solicitudes', titulo: 'Solicitudes', detalle: 'Solicitudes pendientes de clientes' },
+  { ruta: '/admin/salud', titulo: 'Salud del sistema', detalle: 'API, base de datos y endpoints de los CRUD' },
 ];
 
 export function PanelInicio() {
@@ -45,6 +46,8 @@ export function PanelInicio() {
 
 // /estado: comprueba que React llega al API y el API a SQL Server.
 // Sirve para verificar la instalación en cada computadora (plan, primer hito).
+// Es pública, por eso no muestra la base ni el servidor: el diagnóstico completo
+// está en el panel, en Salud del sistema (/admin/salud, D-025).
 export function PaginaEstado() {
   const [estado, setEstado] = useState({ cargando: true });
 
@@ -63,10 +66,11 @@ export function PaginaEstado() {
       <h1>Estado del sistema</h1>
       <Mensaje tipo="exito">React → API: conectado.</Mensaje>
       {baseDatos.conectada ? (
-        <Mensaje tipo="exito">API → SQL Server: conectado a la base {baseDatos.nombre}.</Mensaje>
+        <Mensaje tipo="exito">API → SQL Server: conectado.</Mensaje>
       ) : (
         <Mensaje tipo="error">API → SQL Server: sin conexión ({baseDatos.mensaje}). Revise backend/.env.</Mensaje>
       )}
+      <p className="texto-suave">El detalle de cada módulo está en el panel administrativo, en Salud del sistema.</p>
     </section>
   );
 }

@@ -74,11 +74,13 @@ frontend/src/
   shared/ui/        tema.css, estilos y componentes             Persona A
   shared/api/       cliente HTTP (cliente.js)                   Persona B
   features/auth, servicios, proveedores, productos, ventas      Persona B
+  features/salud    página «Salud del sistema» (D-025)          Persona B
   features/citas, agenda, solicitudes                           Persona A
 backend/src/
   app/              configuración, Express y registro de rutas  Persona B
   shared/           conexión SQL, errores, sesión, validación   Persona B
   modules/auth, servicios, proveedores, productos, ventas       Persona B
+  modules/salud     diagnóstico del API, SQL Server y endpoints Persona B
   modules/citas, agenda, solicitudes, clientes                  Persona A
 database/
   migrations/       cambios de esquema (nunca se editan los ya subidos)
@@ -99,6 +101,7 @@ docs/               contratos, decisiones, diccionario de datos y matriz de prue
 - [Matriz de requerimientos y pruebas](docs/MATRIZ_RF_PRUEBAS.md): los 34 RF con sus claves de Jira y su estado.
 - [Requisitos no funcionales](docs/REQUISITOS_NO_FUNCIONALES.md): cómo se cumplen PR-01 a PR-07 y AC-01 a AC-13, con evidencia y mediciones.
 - [Diagramas](docs/DIAGRAMAS/README.md): contexto, casos de uso, entidades (3.4), arquitectura, clases, estados, colaboración y actividad (3.7), según el sistema implementado.
+- Salud del sistema: en el panel, menú «Salud del sistema» (`/admin/salud`), muestra si cada endpoint de los 5 CRUD funciona o si falla por conexión, login, permisos o tablas (D-025).
 - [Instrucciones para agentes de IA](AGENTS.md).
 
 ## Seguridad

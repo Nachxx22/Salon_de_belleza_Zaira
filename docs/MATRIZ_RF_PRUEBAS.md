@@ -56,6 +56,12 @@ Seguimiento de los 34 requerimientos funcionales del ERS y de la extensión acor
 | MV-03 | Anular venta | Media | SCRUM-38 | SCRUM-92 | P0 | probado | Motivo obligatorio, confirmación, repone el stock en la misma transacción, no se anula dos veces. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
 | EXT-MV-U01 | Actualizar venta (**extensión acordada, no está en el ERS**) | — | — | — | P0 | probado | Corrección con motivo en una transacción: guarda la versión anterior en RevisionVenta, revierte y aplica el stock, conserva código, fecha y precios originales; no corrige ventas anuladas. Punta a punta con SQL Server (CI). Probado en pantalla con SQL Server (6 nov). |
 
+## Salud del sistema — Persona B (Ignacio)
+
+| Código | Requerimiento | Prioridad ERS | Jira RF | Jira CU | Fase | Estado | Prueba |
+|---|---|---|---|---|---|---|---|
+| EXT-SAL-01 | Salud del sistema (**herramienta interna, no está en el ERS**; D-025) | — | — | — | P0 | integrado | Solo con sesión (401 sin ella), catálogo igual a las rutas reales y clasificación de errores (`salud.test.js`); con SQL Server en CI: todos los endpoints OK y las pruebas de escritura se revierten sin cambiar ninguna tabla. Falta revisarla en pantalla con SQL Server. |
+
 ## Citas y Agenda — Persona A
 
 | Código | Requerimiento | Prioridad ERS | Jira RF | Jira CU | Fase | Estado | Prueba |

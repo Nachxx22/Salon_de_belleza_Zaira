@@ -13,6 +13,7 @@ import CatalogoProductos from '../features/productos/CatalogoProductos.jsx';
 import AdminProductos from '../features/productos/AdminProductos.jsx';
 import AdminProveedores from '../features/proveedores/AdminProveedores.jsx';
 import AdminVentas from '../features/ventas/AdminVentas.jsx';
+import AdminSalud from '../features/salud/AdminSalud.jsx';
 // Persona A
 import SolicitarCita from '../features/citas/SolicitarCita.jsx';
 import GestionarCita from '../features/citas/GestionarCita.jsx';
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
           { path: 'citas', element: <AdminCitas /> },
           { path: 'agenda', element: <AdminAgenda /> },
           { path: 'solicitudes', element: <AdminSolicitudes /> },
+          { path: 'salud', element: <AdminSalud /> },
         ],
       },
     ],
