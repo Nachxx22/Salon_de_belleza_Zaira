@@ -6,7 +6,6 @@ Prototipo del sistema web del Salón de Belleza Zaira para el curso Requerimient
 - **Lógica de negocio:** Node.js + Express — carpeta `backend/`
 - **Datos:** Microsoft SQL Server — carpeta `database/`
 
-Demostración: jueves 12 de noviembre de 2026, 7:30 a. m., ejecutando todo localmente en la computadora de la Persona A.
 
 ## Requisitos
 
@@ -19,7 +18,7 @@ Demostración: jueves 12 de noviembre de 2026, 7:30 a. m., ejecutando todo local
 
 En **SQL Server Configuration Manager** → Protocolos de SQLEXPRESS → TCP/IP → Habilitado. En la pestaña *Direcciones IP* → *IPAll*, dejen *Puertos dinámicos* vacío y pongan *Puerto TCP* = `1433`, y reinicien el servicio de SQL Server.
 
-## Instalación (una vez por computadora)
+## Instalación 
 
 ```bash
 git clone https://github.com/Nachxx22/Salon_de_belleza_Zaira.git
@@ -27,26 +26,6 @@ cd Salon_de_belleza_Zaira
 npm install
 ```
 
-1. Copien `backend/.env.example` como `backend/.env` y completen:
-   - `SESSION_SECRET`: una frase larga cualquiera.
-   - `DB_NAME`: `ZairaDev_A` (Persona A) o `ZairaDev_B` (Persona B).
-   - `DB_USER` y `DB_PASSWORD`: el login SQL de desarrollo.
-   - `ADMIN_USUARIO` y `ADMIN_CONTRASENA`: la cuenta de prueba de la administradora (mínimo 8 caracteres).
-2. En SSMS, conectados con autenticación de Windows, abran `database/setup/00_crear_bd_y_permisos.sql`, cambien los dos valores del inicio y ejecútenlo. No hagan commit de ese cambio.
-3. Preparen la base de datos:
-   ```bash
-   npm run db:migrar     # crea las tablas (0001, 0002, ...)
-   npm run db:semillas   # datos de prueba ficticios
-   npm run db:admin      # crea la cuenta de la administradora desde backend/.env
-   npm run db:verificar  # comprueba que la base quedó como se acordó (no deja datos)
-   ```
-4. Arranquen todo:
-   ```bash
-   npm run dev
-   ```
-   - Página web: http://localhost:5173
-   - Verificación de la instalación: http://localhost:5173/estado (debe decir que React llega al API y el API a SQL Server)
-   - Panel administrativo: http://localhost:5173/admin
 
 ## Comandos
 
@@ -62,32 +41,6 @@ npm install
 | `npm run db:verificar` | Comprueba en SQL Server las 14 tablas, sus restricciones, la hora de Costa Rica y el login; no deja datos |
 | `npm run db:preparar` | `db:migrar` + `db:semillas` |
 
-**Para la demostración** (computadora de la Persona A): `npm run build` y luego `npm start`. Todo queda en http://localhost:3000.
-
-## Estructura y dueños
-
-Cada persona trabaja en sus carpetas para no pisarse (plan de desarrollo, sección 4.1).
-
-```text
-frontend/src/
-  app/              rutas y páginas generales                  compartido (cambios avisados)
-  shared/ui/        tema.css, estilos y componentes             Persona A
-  shared/api/       cliente HTTP (cliente.js)                   Persona B
-  features/auth, servicios, proveedores, productos, ventas      Persona B
-  features/salud    página «Salud del sistema» (D-025)          Persona B
-  features/citas, agenda, solicitudes                           Persona A
-backend/src/
-  app/              configuración, Express y registro de rutas  Persona B
-  shared/           conexión SQL, errores, sesión, validación   Persona B
-  modules/auth, servicios, proveedores, productos, ventas       Persona B
-  modules/salud     diagnóstico del API, SQL Server y endpoints Persona B
-  modules/citas, agenda, solicitudes, clientes                  Persona A
-database/
-  migrations/       cambios de esquema (nunca se editan los ya subidos)
-  seeds/            datos de prueba ficticios
-  setup/            script de una sola vez para crear la base y los permisos
-docs/               contratos, decisiones, diccionario de datos y matriz de pruebas
-```
 
 - La identidad visual (colores, tipografía, bordes) se cambia solo en `frontend/src/shared/ui/tema.css`.
 - Todas las rutas de pantallas (`frontend/src/app/rutas.jsx`) y del API (`backend/src/app/rutas.js`) ya están registradas; cada persona completa las páginas y rutas de su módulo.
@@ -104,7 +57,3 @@ docs/               contratos, decisiones, diccionario de datos y matriz de prue
 - Salud del sistema: en el panel, menú «Salud del sistema» (`/admin/salud`), muestra si cada endpoint de los 5 CRUD funciona o si falla por conexión, login, permisos o tablas (D-025).
 - [Instrucciones para agentes de IA](AGENTS.md).
 
-## Seguridad
-
-- Nunca suban `backend/.env`, contraseñas, respaldos `.bak` ni archivos `.mdf`/`.ldf` (ya están en `.gitignore`).
-- Este repositorio es **público**: todo lo que se sube lo puede ver cualquier persona.
