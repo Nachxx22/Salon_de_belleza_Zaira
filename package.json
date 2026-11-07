@@ -21,7 +21,8 @@
     "db:verificar": "npm run db:verificar -w backend",
     "api:integracion": "npm run api:integracion -w backend",
     "api:rendimiento": "npm run api:rendimiento -w backend",
-    "db:preparar": "npm run db:migrar && npm run db:semillas"
+    "db:preparar": "npm run db:migrar && npm run db:semillas",
+    "docs:diagramas": "node docs/DIAGRAMAS/generar-diagramas.mjs"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"

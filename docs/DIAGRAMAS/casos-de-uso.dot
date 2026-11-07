@@ -1,0 +1,57 @@
+// Diagrama de casos de uso del sistema implementado: 34 RF del ERS + 4 extensiones EXT (borde punteado, no están en el ERS).
+// Generar: dot -Tpng -Gdpi=150 casos-de-uso.dot -o casos-de-uso.png
+digraph casos_de_uso {
+  rankdir=LR; compound=true; newrank=true; nodesep=0.12; ranksep=0.9;
+  fontname="Helvetica"; node [fontname="Helvetica", fontsize=11]; edge [fontname="Helvetica", fontsize=9, arrowhead=none, color="#555555"];
+
+  cliente [shape=box, style="rounded,filled", fillcolor="#f3e3ec", label="«actor»\nCliente\n(sin cuenta)"];
+  admin   [shape=box, style="rounded,filled", fillcolor="#f3e3ec", label="«actor»\nAdministradora"];
+
+  subgraph cluster_sistema {
+    label="Sistema web del Salón de Belleza Zaira"; labeljust=l; style="rounded"; color="#8a3a6a"; penwidth=1.5; fontsize=13;
+    node [shape=ellipse, style=filled, fillcolor="#ffffff", color="#8a3a6a"];
+
+    subgraph cluster_publico { label="Funciones públicas"; style="rounded,dashed"; color="#999999";
+      MS02 [label="MS-02 Consultar servicio"]; MPD03c [label="MPD-03 Consultar\nproducto (catálogo)"];
+      MCA01 [label="MCA-01 Crear cita"]; MCA02 [label="MCA-02 Reprogramar cita"]; MCA03 [label="MCA-03 Cancelar cita"]; }
+    subgraph cluster_acceso { ancla_acceso [shape=point, style=invis, width=0]; label="Acceso"; style="rounded,dashed"; color="#999999";
+      MA01 [label="MA-01 Iniciar sesión"]; MA02 [label="MA-02 Cerrar sesión"]; }
+    subgraph cluster_servicios { ancla_servicios [shape=point, style=invis, width=0]; label="Servicios"; style="rounded,dashed"; color="#999999";
+      MS01 [label="MS-01 Registrar"]; MS03 [label="MS-03 Actualizar"]; MS04 [label="MS-04 Desactivar"];
+      MS05 [label="MS-05 Consultar"]; EXTS [label="EXT-MS-R01 Reactivar", style="filled,dashed"]; }
+    subgraph cluster_proveedores { ancla_proveedores [shape=point, style=invis, width=0]; label="Proveedores"; style="rounded,dashed"; color="#999999";
+      MPV01 [label="MPV-01 Registrar"]; MPV02 [label="MPV-02 Consultar"]; MPV03 [label="MPV-03 Actualizar"];
+      MPV04 [label="MPV-04 Desactivar"]; EXTP [label="EXT-MPV-R01 Reactivar", style="filled,dashed"]; }
+    subgraph cluster_productos { ancla_productos [shape=point, style=invis, width=0]; label="Productos"; style="rounded,dashed"; color="#999999";
+      MPD01 [label="MPD-01 Registrar"]; MPD02 [label="MPD-02 Desactivar"]; MPD03 [label="MPD-03 Consultar"];
+      MPD04 [label="MPD-04 Consultar stock"]; MPD05 [label="MPD-05 Actualizar"]; MPD06 [label="MPD-06 Actualizar stock"];
+      EXTD [label="EXT-MPD-R01 Reactivar", style="filled,dashed"]; }
+    subgraph cluster_ventas { ancla_ventas [shape=point, style=invis, width=0]; label="Ventas"; style="rounded,dashed"; color="#999999";
+      MV01 [label="MV-01 Registrar venta"]; MV02 [label="MV-02 Consultar venta"]; MV03 [label="MV-03 Anular venta"];
+      EXTV [label="EXT-MV-U01 Corregir venta", style="filled,dashed"]; }
+    subgraph cluster_citas { ancla_citas [shape=point, style=invis, width=0]; label="Citas y solicitudes"; style="rounded,dashed"; color="#999999";
+      MCA12 [label="MCA-12 Crear cita"]; MCA04 [label="MCA-04 Consultar citas"]; MCA13 [label="MCA-13 Reprogramar cita"];
+      MCA14 [label="MCA-14 Cancelar cita"]; MCA07 [label="MCA-07 Marcar completada"];
+      MCA05 [label="MCA-05 Consultar solicitudes"]; MCA06 [label="MCA-06 Procesar solicitud"]; }
+    subgraph cluster_agenda { ancla_agenda [shape=point, style=invis, width=0]; label="Configuración de agenda"; style="rounded,dashed"; color="#999999";
+      MCA08 [label="MCA-08 Registrar"]; MCA09 [label="MCA-09 Consultar"]; MCA10 [label="MCA-10 Modificar"]; MCA11 [label="MCA-11 Eliminar"]; }
+  }
+
+  // Cliente: cada caso de uso público.
+  cliente -> {MS02 MPD03c MCA01 MCA02 MCA03} [dir=none];
+  // Administradora: todos los casos de uso de cada área (una línea por área, sin flecha: asociación UML).
+  ancla_acceso -> admin [ltail=cluster_acceso, dir=none];
+  ancla_servicios -> admin [ltail=cluster_servicios, dir=none];
+  ancla_proveedores -> admin [ltail=cluster_proveedores, dir=none];
+  ancla_productos -> admin [ltail=cluster_productos, dir=none];
+  ancla_ventas -> admin [ltail=cluster_ventas, dir=none];
+  ancla_citas -> admin [ltail=cluster_citas, dir=none];
+  ancla_agenda -> admin [ltail=cluster_agenda, dir=none];
+
+  // Relaciones entre casos de uso.
+  edge [style=dashed, arrowhead=vee, color="#8a3a6a", constraint=false];
+  MV01 -> MPD06 [label="«include»"];
+  MV03 -> MPD06 [label="«include»"];
+  MCA05 -> MCA06 [label="«extend»"];
+  MCA01 -> MCA06 [label="se resuelve en"];
+}

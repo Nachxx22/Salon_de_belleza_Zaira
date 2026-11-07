@@ -1,0 +1,154 @@
+%% ERS 3.7.2 Diagrama de clases. Generado por generar-diagramas.mjs desde database/migrations: no editar a mano.
+%% Junto a cada operación va el caso de uso que la implementa; EXT = extensión que no está en el ERS.
+classDiagram
+    class Administradora {
+        -Entero id
+        -Texto usuario
+        -Texto contrasenaHash
+        +iniciarSesion() MA-01
+        +cerrarSesion() MA-02
+    }
+    class Cliente {
+        -Entero id
+        -Texto nombre
+        -Texto telefono
+        -Texto correoElectronico
+        +buscarPorTelefono()
+        +registrarAlAgendar()
+    }
+    class Servicio {
+        -Entero id
+        -Texto nombre
+        -Texto descripcion
+        -Decimal precioAproximado
+        -Entero duracionMinutos
+        -Booleano permiteDomicilio
+        -Texto estado
+        +registrar() MS-01
+        +consultar() MS-02 y MS-05
+        +actualizar() MS-03
+        +desactivar() MS-04
+        +reactivar() EXT-MS-R01
+    }
+    class Proveedor {
+        -Entero id
+        -Texto nombre
+        -Texto telefono
+        -Texto correoElectronico
+        -Texto estado
+        +registrar() MPV-01
+        +consultar() MPV-02
+        +actualizar() MPV-03
+        +desactivar() MPV-04
+        +reactivar() EXT-MPV-R01
+    }
+    class Producto {
+        -Entero id
+        -Texto nombre
+        -Texto marca
+        -Texto categoria
+        -Texto descripcion
+        -Decimal precio
+        -Entero stock
+        -Texto estado
+        -Texto /disponibilidad
+        +registrar() MPD-01
+        +desactivar() MPD-02
+        +consultar() MPD-03
+        +consultarStock() MPD-04
+        +actualizar() MPD-05
+        +actualizarStock() MPD-06
+        +reactivar() EXT-MPD-R01
+    }
+    class Horario {
+        -Entero id
+        -Entero diaSemana
+        -Hora horaInicio
+        -Hora horaFin
+        +registrar() MCA-08
+        +consultar() MCA-09
+        +modificar() MCA-10
+        +eliminar() MCA-11
+    }
+    class BloqueoAgenda {
+        -Entero id
+        -Fecha fecha
+        -Hora horaInicio
+        -Hora horaFin
+        +registrar() MCA-08
+        +consultar() MCA-09
+        +modificar() MCA-10
+        +eliminar() MCA-11
+    }
+    class Cita {
+        -Entero id
+        -Texto codigo
+        -Fecha fecha
+        -Hora hora
+        -Texto estado
+        -Booleano esDomicilio
+        -Texto direccion
+        -Texto observaciones
+        -Texto motivoCancelacion
+        +crear() MCA-01 y MCA-12
+        +consultar() MCA-04
+        +reprogramar() MCA-13
+        +cancelar() MCA-14
+        +completar() MCA-07
+        +duracionTotal() Entero
+    }
+    class CitaServicio {
+        -Entero duracionAplicadaMinutos
+    }
+    class SolicitudCita {
+        -Entero id
+        -Texto tipo
+        -FechaHora fechaSolicitud
+        -Texto estado
+        -Fecha fechaPropuesta
+        -Hora horaPropuesta
+        +solicitarReprogramacion() MCA-02
+        +solicitarCancelacion() MCA-03
+        +consultarPendientes() MCA-05
+        +aprobar() MCA-06
+        +rechazar() MCA-06
+    }
+    class Venta {
+        -Entero id
+        -Texto /codigo
+        -FechaHora fechaHora
+        -Texto referenciaCliente
+        -Texto metodoPago
+        -Decimal total
+        -Texto estado
+        -Texto motivoAnulacion
+        +registrar() MV-01
+        +consultar() MV-02
+        +anular() MV-03
+        +corregir() EXT-MV-U01
+    }
+    class VentaProducto {
+        -Entero cantidad
+        -Decimal precioAplicado
+        +subtotal() Decimal
+    }
+    class VentaServicio {
+        -Decimal precioFinal
+    }
+    class RevisionVenta {
+        -Entero id
+        -FechaHora fechaHora
+        -Texto motivo
+        -Texto datosAnteriores
+    }
+    Proveedor "1" -- "0..*" Producto : suministra
+    Cliente "1" -- "0..*" Cita : solicita
+    Cita "1" *-- "1..*" CitaServicio : incluye
+    Servicio "1" -- "0..*" CitaServicio : se agenda en
+    Cita "1" -- "0..*" SolicitudCita : recibe
+    Venta "1" *-- "0..*" VentaProducto : contiene
+    Producto "1" -- "0..*" VentaProducto : se vende en
+    Venta "1" *-- "0..*" VentaServicio : contiene
+    Servicio "1" -- "0..*" VentaServicio : se cobra en
+    Venta "1" *-- "0..*" RevisionVenta : conserva
+    note for RevisionVenta "Extensión EXT-MV-U01 (no está en el ERS)"

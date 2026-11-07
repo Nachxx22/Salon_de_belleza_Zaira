@@ -1,0 +1,29 @@
+%% ERS 3.7.5 Actividad para registrar una venta (MV-01), según el código implementado.
+flowchart TD
+    inicio((Inicio)) --> elegir["Elegir productos y/o servicios<br/>(se agregan al elegirlos)"]
+    elegir --> hay{"¿Al menos un<br/>producto o servicio?"}
+    hay -- No --> msgVacio["Mensaje: debe incluir al menos uno"] --> elegir
+    hay -- Sí --> lineas["Productos: cantidad (no más del stock en pantalla)<br/>Servicios: precio final en colones enteros"]
+    lineas --> total["Ver el total mientras se arma la venta"]
+    total --> metodo["Elegir método de pago:<br/>efectivo, SINPE o transferencia"]
+    metodo --> pago{"¿La administradora<br/>confirmó el pago?"}
+    pago -- No --> msgPago["No se registra: confirme el pago"] --> metodo
+    pago -- Sí --> enviar["Enviar al servidor"]
+
+    enviar --> validar
+    subgraph servidor["Servidor: una sola transacción (AC-08)"]
+        validar["Validar datos (ventas.logica.js)"] --> tran["BEGIN TRAN"]
+        tran --> stock["Por cada producto:<br/>UPDATE Stock = Stock − cantidad<br/>WHERE Stock ≥ cantidad"]
+        stock --> alcanza{"¿Alcanzó el stock?"}
+        alcanza -- No --> rollback1["ROLLBACK"]
+        alcanza -- Sí --> precio["Tomar el precio del catálogo"]
+        precio --> servicios["Verificar servicios activos"]
+        servicios --> calcular["Calcular el total"]
+        calcular --> guardar["INSERT Venta: código, fecha y hora de CR, Registrada<br/>INSERT VentaProducto y VentaServicio"]
+        guardar --> commit["COMMIT"]
+        guardar -. "error inesperado" .-> rollback2["ROLLBACK"]
+    end
+
+    rollback1 --> msgStock["Mensaje «Cantidad insuficiente»<br/>sin venta ni stock descontado"] --> lineas
+    commit --> exito["Mensaje: venta registrada con su código"] --> fin((Fin))
+    rollback2 --> msgError["Mensaje: la operación no pudo completarse<br/>(no queda nada a medias)"] --> fin

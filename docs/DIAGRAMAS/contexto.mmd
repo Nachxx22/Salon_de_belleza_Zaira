@@ -1,0 +1,15 @@
+%% Diagrama de contexto del sistema implementado.
+flowchart LR
+    cliente(["Cliente<br/>sin cuenta"])
+    admin(["Administradora<br/>(propietaria)"])
+    sistema["Sistema web del<br/>Salón de Belleza Zaira"]
+    pago["Medios de pago externos<br/>efectivo · SINPE · transferencia"]
+    hosting[("Servidor y SQL Server<br/>(alojamiento)")]
+
+    cliente -- "consulta servicios y productos<br/>solicita, reprograma o cancela citas (código + teléfono)" --> sistema
+    sistema -- "catálogos, horas libres, código de cita,<br/>estado de sus solicitudes" --> cliente
+    admin -- "inicia sesión; gestiona servicios, proveedores, productos,<br/>ventas, agenda, citas y solicitudes" --> sistema
+    sistema -- "listados, confirmaciones, avisos internos<br/>de solicitudes nuevas" --> admin
+    cliente -. "paga fuera del sistema" .-> pago
+    admin -. "confirma el pago al registrar la venta" .-> pago
+    sistema <-- "datos persistentes" --> hosting

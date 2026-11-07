@@ -1,0 +1,43 @@
+%% ERS 3.7.4 Colaboración para crear una cita (MCA-01), como diagrama de secuencia, según el código implementado.
+sequenceDiagram
+    autonumber
+    actor C as Cliente
+    participant R as React<br/>SolicitarCita.jsx
+    participant A as Express<br/>citas.rutas.js
+    participant L as citas.logica.js
+    participant D as citas.datos.js<br/>clientes.datos.js
+    participant S as SQL Server
+
+    C->>R: Elige servicios y una fecha (desde mañana)
+    R->>A: GET /api/publico/citas/disponibilidad?fecha&servicios
+    A->>L: disponibilidadPublica()
+    L->>D: servicios activos y agenda del día
+    D->>S: SELECT Horario, BloqueoAgenda, citas y solicitudes pendientes
+    S-->>D: filas
+    D-->>L: agenda del día
+    L->>L: horariosDisponibles(): cada 30 min, cabe la duración total
+    L-->>R: horas libres
+    C->>R: Elige la hora, escribe nombre y teléfono, confirma
+    R->>A: POST /api/publico/citas
+    A->>L: crearCitaCliente()
+    L->>L: valida datos, servicios activos, domicilio y fecha
+    L->>D: registrarCita(cita, estaDisponible)
+    D->>S: BEGIN TRAN + sp_getapplock 'agenda'
+    D->>S: vuelve a leer la agenda del día
+    D->>L: estaDisponible(agenda)?
+    alt el horario ya se ocupó
+        L-->>D: no
+        D->>S: ROLLBACK
+        A-->>R: 409 HORARIO_OCUPADO
+        R-->>C: «El horario ya no está disponible»
+    else sigue libre
+        L-->>D: sí
+        D->>S: busca Cliente por teléfono (lo crea si no existe)
+        D->>S: INSERT Cita (Pendiente, código único)
+        D->>S: INSERT CitaServicio (duración aplicada)
+        D->>S: INSERT SolicitudCita (Creacion, Pendiente)
+        D->>S: COMMIT
+        A-->>R: 201 con el código de la cita
+        R-->>C: «Pendiente de aprobación» + código
+    end
+    Note over S,R: El panel administrativo consulta /api/admin/solicitudes/resumen<br/>cada 20 s y muestra el aviso interno (MCA-05)

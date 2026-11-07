@@ -1,0 +1,39 @@
+%% ERS 3.7.1 Arquitectura del sistema (cliente-servidor en 3 capas), según el código implementado.
+flowchart TB
+    cliente(["Cliente<br/>(sin cuenta)"])
+    admin(["Administradora"])
+
+    subgraph presentacion["Capa de presentación · React 19 + Vite (frontend/)"]
+        direction LR
+        publicas["Páginas públicas<br/>Inicio · Servicios · Productos<br/>Solicitar cita · Mi cita"]
+        panel["Panel administrativo<br/>Servicios · Proveedores · Productos · Ventas<br/>Citas · Agenda · Solicitudes + aviso interno"]
+        apicliente["shared/api/cliente.js<br/>único punto de acceso al API (fetch + JSON)"]
+        publicas --> apicliente
+        panel --> apicliente
+    end
+
+    subgraph logica["Capa de lógica de negocio · Node.js 26 + Express 5 (backend/)"]
+        direction TB
+        app["app.js · cabeceras de seguridad, HTTPS en producción,<br/>sesión en cookie httpOnly"]
+        rutas["app/rutas.js<br/>/api/publico · /api/auth · /api/salud<br/>/api/admin → requiereAdministradora (AC-01)"]
+        subgraph modulos["Módulos (uno por área, AC-11): auth · servicios · proveedores · productos · ventas · citas · clientes · agenda · solicitudes"]
+            direction LR
+            capaRutas["&lt;modulo&gt;.rutas.js<br/>HTTP: lee la solicitud y responde"]
+            capaLogica["&lt;modulo&gt;.logica.js<br/>reglas del caso de uso y validaciones<br/>sin SQL (D-017)"]
+            capaDatos["&lt;modulo&gt;.datos.js<br/>SQL parametrizado y transacciones"]
+            capaRutas --> capaLogica --> capaDatos
+        end
+        compartido["shared/db.js · pool de mssql, consulta, enTransaccion<br/>shared/validacion · fechas (hora de Costa Rica) · errores"]
+        app --> rutas --> capaRutas
+        capaDatos --> compartido
+    end
+
+    subgraph datos["Capa de datos · SQL Server 2022 (database/)"]
+        bd[("Base del salón: 14 tablas<br/>llaves, CHECK, índices<br/>bloqueo de aplicación 'agenda'")]
+    end
+
+    cliente -- navegador --> publicas
+    admin -- navegador --> panel
+    apicliente -- "HTTP/HTTPS · JSON { ok, data }" --> app
+    compartido -- "TDS (mssql)" --> bd
+    presentacion -. "React nunca accede a la base (AC-02)" .-x bd

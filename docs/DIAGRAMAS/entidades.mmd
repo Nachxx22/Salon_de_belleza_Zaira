@@ -1,0 +1,117 @@
+%% ERS 3.4 Diagrama de entidades. Generado por generar-diagramas.mjs desde database/migrations: no editar a mano.
+erDiagram
+    Administradora {
+        INT Id PK
+        NVARCHAR(50) Usuario UK
+        NVARCHAR(100) ContrasenaHash
+    }
+    Cliente {
+        INT Id PK
+        NVARCHAR(150) Nombre
+        NVARCHAR(20) Telefono UK
+        NVARCHAR(254) CorreoElectronico "opcional"
+    }
+    Servicio {
+        INT Id PK
+        NVARCHAR(100) Nombre
+        NVARCHAR(500) Descripcion
+        DECIMAL(10_2) PrecioAproximado
+        INT DuracionMinutos
+        BIT PermiteDomicilio
+        NVARCHAR(15) Estado
+    }
+    Proveedor {
+        INT Id PK
+        NVARCHAR(150) Nombre
+        NVARCHAR(20) Telefono UK
+        NVARCHAR(254) CorreoElectronico UK
+        NVARCHAR(15) Estado
+    }
+    Producto {
+        INT Id PK
+        INT ProveedorId FK
+        NVARCHAR(150) Nombre
+        NVARCHAR(100) Marca
+        NVARCHAR(100) Categoria
+        NVARCHAR(500) Descripcion
+        DECIMAL(10_2) Precio
+        INT Stock
+        NVARCHAR(15) Estado
+        NVARCHAR Disponibilidad "calculada"
+    }
+    Horario {
+        INT Id PK
+        TINYINT DiaSemana
+        TIME(0) HoraInicio
+        TIME(0) HoraFin
+    }
+    BloqueoAgenda {
+        INT Id PK
+        DATE Fecha
+        TIME(0) HoraInicio
+        TIME(0) HoraFin
+    }
+    Cita {
+        INT Id PK
+        NVARCHAR(30) Codigo UK
+        INT ClienteId FK
+        DATE Fecha
+        TIME(0) Hora
+        NVARCHAR(20) Estado
+        BIT EsDomicilio
+        NVARCHAR(300) Direccion "opcional"
+        NVARCHAR(500) Observaciones "opcional"
+        NVARCHAR(500) MotivoCancelacion "opcional"
+    }
+    CitaServicio {
+        INT CitaId PK, FK
+        INT ServicioId PK, FK
+        INT DuracionAplicadaMinutos
+    }
+    SolicitudCita {
+        INT Id PK
+        INT CitaId FK
+        NVARCHAR(20) Tipo
+        DATETIME2(0) FechaSolicitud
+        NVARCHAR(20) Estado
+        DATE FechaPropuesta "opcional"
+        TIME(0) HoraPropuesta "opcional"
+    }
+    Venta {
+        INT Id PK
+        NVARCHAR Codigo "calculada"
+        DATETIME2(0) FechaHora
+        NVARCHAR(150) ReferenciaCliente "opcional"
+        NVARCHAR(15) MetodoPago
+        DECIMAL(12_2) Total
+        NVARCHAR(15) Estado
+        NVARCHAR(500) MotivoAnulacion "opcional"
+    }
+    VentaProducto {
+        INT VentaId PK, FK
+        INT ProductoId PK, FK
+        INT Cantidad
+        DECIMAL(10_2) PrecioAplicado
+    }
+    VentaServicio {
+        INT VentaId PK, FK
+        INT ServicioId PK, FK
+        DECIMAL(10_2) PrecioFinal
+    }
+    RevisionVenta {
+        INT Id PK
+        INT VentaId FK
+        DATETIME2(0) FechaHora
+        NVARCHAR(500) Motivo
+        NVARCHAR(MAX) DatosAnteriores
+    }
+    Proveedor ||--o{ Producto : "suministra"
+    Cliente ||--o{ Cita : "solicita"
+    Cita ||--|{ CitaServicio : "incluye"
+    Servicio ||--o{ CitaServicio : "se agenda en"
+    Cita ||--o{ SolicitudCita : "recibe"
+    Venta ||--o{ VentaProducto : "contiene"
+    Producto ||--o{ VentaProducto : "se vende en"
+    Venta ||--o{ VentaServicio : "contiene"
+    Servicio ||--o{ VentaServicio : "se cobra en"
+    Venta ||--o{ RevisionVenta : "conserva"

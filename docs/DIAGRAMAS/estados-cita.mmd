@@ -1,0 +1,28 @@
+%% ERS 3.7.3 Diagrama de estados de una cita, según el comportamiento implementado.
+stateDiagram-v2
+    direction LR
+    [*] --> Pendiente : el cliente crea la cita (MCA-01)<br/>se registra SolicitudCita de creación
+    [*] --> Confirmada : la administradora crea la cita (MCA-12)
+
+    Pendiente --> Confirmada : solicitud de creación aprobada (MCA-06)
+    Pendiente --> Cancelada : solicitud de creación rechazada (MCA-06)
+    Confirmada --> Pendiente : el cliente solicita reprogramar (MCA-02)<br/>conserva la fecha original
+    Pendiente --> Confirmada : reprogramación aprobada → nueva fecha y hora<br/>reprogramación rechazada → fecha original (MCA-06)
+
+    Confirmada --> Confirmada : el cliente solicita cancelar (MCA-03)<br/>cancelación rechazada (MCA-06)<br/>la administradora reprograma (MCA-13)
+    Confirmada --> Cancelada : cancelación aprobada (MCA-06)<br/>la administradora cancela con motivo (MCA-14)
+    Confirmada --> Completada : la administradora la marca (MCA-07)
+
+    Cancelada --> [*]
+    Completada --> [*]
+
+    note right of Pendiente
+        Reserva su período en la agenda.
+        En una reprogramación también reserva
+        el período propuesto.
+    end note
+    note right of Confirmada
+        Con una SolicitudCita Pendiente no se puede
+        reprogramar, cancelar ni completar
+        directamente: primero se procesa (MCA-06).
+    end note
